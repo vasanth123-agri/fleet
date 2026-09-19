@@ -1,0 +1,1483 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model EnvironmentalReading {
+  id                      String             @id @default(cuid())
+  timestamp               DateTime           @default(now())
+  userId                  Int
+  farmId                  String?
+  boundaryId              String?
+  
+  gridCellId              String?
+  temperature             Float?
+  humidity                Float?
+  windSpeed               Float?
+  directRadiation         Float?
+  par                     Float?
+  vpd                     Float?
+  evapotranspiration      Float?
+  gdd                     Float?
+  stomatalConductance     Float?
+  co2                     Float?
+  soilTemperature         Float?
+  soilMoisture            Float?
+  soilElectroConductivity Float?
+  soilNitrogen            Float?             @map("n_sensor")
+  soilPhosphorus          Float?             @map("p_sensor")
+  soilPotassium           Float?             @map("k_sensor")
+  phMaster                Float?             @map("ph")
+  phSlave                 Float?
+  phLog                   Float?
+  tdsv                    Float?             @map("tdsv")
+  soilv                   Float?             @map("soilv")
+  activeGrowthDuration    Float?
+  clear                   Float?
+  f1                      Float?
+  f2                      Float?
+  f3                      Float?
+  f4                      Float?
+  f5                      Float?
+  f6                      Float?
+  f7                      Float?
+  f8                      Float?
+  nir                     Float?
+  batteryPercentage       Float?             @map("battery_percentage")
+  batteryVoltage          Float?             @map("battery_voltage")
+  batteryCurrent          Float?             @map("battery_current")
+  batteryChargingStatus   Int?               @map("battery_charging_status")
+  isCharging              Boolean?           @map("is_charging")
+  user                    User               @relation(fields: [userId], references: [id])
+  farm                    Farm?              @relation(fields: [farmId], references: [id])
+  boundary                farmBoundary?      @relation(fields: [boundaryId], references: [id])
+  gridCell                gridCell?          @relation(fields: [gridCellId], references: [id])
+  derivedStressReadings   StressReading[]
+  derivedNutrientAnalyses NutrientAnalysis[]
+
+  @@index([userId, farmId, boundaryId, timestamp(sort: Desc)])
+  @@index([boundaryId, timestamp(sort: Desc)])
+  @@index([farmId, timestamp(sort: Desc)])
+  @@index([timestamp])
+}
+
+model StressReading {
+  id                String                @id @default(cuid())
+  timestamp         DateTime              @default(now())
+  userId            Int
+  plantId           Int?
+  farmId            String?
+  boundaryId        String?
+  gridCellId        String?
+  sourceReadingId   String?
+  lightStress       Float?
+  temperatureStress Float?
+  waterStress       Float?
+  nutrientStress    Float?
+  user              User                  @relation(fields: [userId], references: [id])
+  plant             Plant?                @relation(fields: [plantId], references: [plantId])
+  farm              Farm?                 @relation(fields: [farmId], references: [id])
+  boundary          farmBoundary?         @relation(fields: [boundaryId], references: [id])
+  gridCell          gridCell?             @relation(fields: [gridCellId], references: [id])
+  sourceReading     EnvironmentalReading? @relation(fields: [sourceReadingId], references: [id])
+
+  @@index([userId, plantId, boundaryId, timestamp(sort: Desc)])
+  @@index([boundaryId, timestamp(sort: Desc)])
+  @@index([farmId, timestamp(sort: Desc)])
+  @@index([timestamp])
+}
+
+model NutrientAnalysis {
+  id                 String                @id @default(cuid())
+  timestamp          DateTime              @default(now())
+  userId             Int
+  plantId            Int?
+  farmId             String?
+  boundaryId         String?
+  gridCellId         String?
+  sourceReadingId    String?
+  n_absorption_rate  Float?
+  p_absorption_rate  Float?
+  k_absorption_rate  Float?
+  n_total_uptake_24h Float?
+  p_total_uptake_24h Float?
+  k_total_uptake_24h Float?
+  user               User                  @relation(fields: [userId], references: [id])
+  plant              Plant?                @relation(fields: [plantId], references: [plantId])
+  farm               Farm?                 @relation(fields: [farmId], references: [id])
+  boundary           farmBoundary?         @relation(fields: [boundaryId], references: [id])
+  gridCell           gridCell?             @relation(fields: [gridCellId], references: [id])
+  sourceReading      EnvironmentalReading? @relation(fields: [sourceReadingId], references: [id])
+
+  @@index([userId, plantId, boundaryId, timestamp(sort: Desc)])
+  @@index([boundaryId, timestamp(sort: Desc)])
+  @@index([farmId, timestamp(sort: Desc)])
+  @@index([timestamp])
+}
+
+enum UserAccessRole {
+  TRIAL
+  NORMAL
+  VIP
+}
+
+model User {
+  id                                       Int                      @id @unique @default(autoincrement())
+  supabaseId                               String?                  @unique
+  mobileNumber                             String                   @unique
+  countryCode                              String?
+  countryName                              String?
+  dialCode                                 String?
+  flagUrl                                  String?
+  isVerifiedEmail                          Boolean
+  isVerifiedPhone                          Boolean
+  yieldType                                Int?
+  email                                    String                   @unique
+  alertEmail                               String?                  @default("vasanth@agriinverse.in")
+  isAlertEmailEnabled                      Boolean                  @default(false)
+  environmentType                          String?
+  cultivationType                          String?
+  status                                   String?                  @default("PENDING")
+  onboardingStep                           Int?                     @default(1)
+  otpVerified                              Boolean                  @default(false)
+  hasFarm                                  Boolean                  @default(false)
+  hasBms                                   Boolean                  @default(false)
+  numberOfDays                             Int?
+  daysSinceSown                            Int?
+  accumulatedGdd                           Float?                   @default(0)
+  role                                     UserAccessRole           @default(TRIAL)
+  trialReportCount                         Int                      @default(0)
+  trialReportLimit                         Int                      @default(30)
+  trialCompleted                           Boolean                  @default(false)
+  vipActivatedAt                           DateTime?
+  vipExpiresAt                             DateTime?
+  isWhatsappNotificationEnabled            Boolean                  @default(false)
+  preferredLanguage                        String                   @default("en")
+  createdAt                                DateTime?                @default(now())
+  updatedAt                                DateTime?                @updatedAt
+  isAdmin                                  Boolean                  @default(false)
+  free                                     Boolean?                 @default(false)
+  isLoggedIn                               Boolean?                 @default(false)
+  area                                     String?
+  deviceCount                              Int?                     @default(0)
+  userName                                 String?
+  profilePicture                           String?
+  deviceId                                 String?                  @default("-1")
+  screenPermissions                        Json?
+  farm                                     Farm[]
+  growth                                   Growth[]
+  notifications_notifications_userIdTouser Notifications[]          @relation("notifications_userIdTouser")
+  screenviews                              Screenview[]
+  adminnotifications                       AdminNotification[]
+  buyers                                   Buyer[]
+  chats                                    Chat[]                   @relation("UserChats")
+  deviceReadings                           DeviceReading[]
+  expenses                                 Expense[]
+  farmBoundaries                           farmBoundary[]
+  gridCells                                gridCell[]
+  passwordResetTokens                      PasswordResetToken[]
+  payments                                 Payment[]
+  profits                                  Profit[]
+  userDevices                              UserDevice[]
+  userPlants                               UserPlant[]
+  environmentalReadings                    EnvironmentalReading[]
+  stressReadings                           StressReading[]
+  nutrientAnalyses                         NutrientAnalysis[]
+  financialManagement                      FinancialManagement[]
+  iotDevices                               IotDevice[]
+  batch                                    batch[]
+  NodeRedDeviceDetails                     NodeRedDeviceDetails[]
+  DeviceRuntimeLog                         DeviceRuntimeLog[]
+  plantHistory                             PlantHistory[]
+  automationRules                          AutomationRule[]
+  updatePlantWithHistories                 updatePlantWithHistory[]
+  dailyFarmReports                         DailyFarmReport[]
+  aiUsages                                 AIUsage[]
+  fertigationSettings                      FertigationSettings[]
+  outdoorReadings                          OutdoorReading[]
+  indoorReadings                           IndoorReading[]
+  nutrientTargetSettings                   NutrientTargetSetting[]
+  outdoorLogs                              OutdoorLog[]
+  indoorLogs                               IndoorLog[]
+  sensorValidities                         SensorValidity[]
+  auditLogs                                AuditLog[]               @relation("AuditLogAdmin")
+  loginActivities                          LoginActivity[]
+  deliveryLogs                             DeliveryLog[]
+  lightParams                              LightParam[]
+}
+
+model FertigationSettings {
+  id                  String                   @id @default(cuid())
+  userId              Int
+  nitrogenRatio       Float                    @default(1)
+  phosphorusRatio     Float                    @default(2)
+  potassiumRatio      Float                    @default(1)
+  targetEc            Float                    @default(2.4)
+  targetPh            Float                    @default(6.2)
+  totalNutrientTarget Float                    @default(150)
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  user                User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tanks               FertigationTankConfig[]
+
+  @@unique([userId])
+  @@index([userId])
+}
+
+model FertigationTankConfig {
+  id                     String                @id @default(cuid())
+  settingsId             String
+  tankKey                String
+  name                   String
+  type                   String?               @default("nutrient") // "nutrient" | "ph" | "ec"
+  nutrient               String
+  radius                 Float?                @default(10)
+  height                 Float?                @default(20)
+  capacityMl             Float
+  capacityLiters         Float?                @default(0.628)
+  alertThresholdPercent  Float
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  settings               FertigationSettings   @relation(fields: [settingsId], references: [id], onDelete: Cascade)
+
+  @@unique([settingsId, tankKey])
+  @@index([settingsId])
+}
+
+model OutdoorReading {
+  id                 String   @id @default(cuid())
+  timestamp          DateTime @default(now())
+  formattedTimestamp String?  @map("formatted_timestamp")
+  deviceId           String   @map("device_id")
+  type               String?  @default("status")
+  userId             Int      @map("user_id")
+  farmId             String?  @map("farm_id")
+  boundaryId         String?  @map("boundary_id")
+
+  // Sensor readings
+  m1_ph              Float?   @map("m1_ph")
+  m2_ph              Float?   @map("m2_ph")
+  m1_ec              Float?   @map("m1_ec")
+  m2_ec              Float?   @map("m2_ec")
+  m1_ppm             Float?   @map("m1_ppm")
+  m2_ppm             Float?   @map("m2_ppm")
+  ec_sp              Float?   @map("ec_sp")
+  ph_sp              Float?   @map("ph_sp")
+  t_m1               Float?   @map("t_m1")
+  t_m2               Float?   @map("t_m2")
+  m1_press_kpa       Float?   @map("m1_press_kpa")
+
+  // Fallback / legacy fields
+  ph                 Float?
+  ec                 Float?
+  temperature        Float?
+  waterLevel         Float?   @map("water_level")
+
+  // Status flags
+  alert              Int?     @default(0)
+  failsafe           Boolean? @default(false)
+  sess_lock          Boolean? @default(false) @map("sess_lock")
+  e_stop             Boolean? @default(false) @map("e_stop")
+  safe               Boolean? @default(true)
+  ready              Boolean? @default(false)
+  estop              Boolean? @default(false)
+
+  // Tank percentages and level heights
+  n1_pct             Float?   @map("n1_pct")
+  n2_pct             Float?   @map("n2_pct")
+  ph_up_pct          Float?   @map("ph_up_pct")
+  ph_dn_pct          Float?   @map("ph_dn_pct")
+  t5_pct             Float?   @map("t5_pct")
+  t1_cm              Float?   @map("t1_cm")
+  t2_cm              Float?   @map("t2_cm")
+  t3_cm              Float?   @map("t3_cm")
+  t4_cm              Float?   @map("t4_cm")
+  t5_cm              Float?   @map("t5_cm")
+  ph_partial         Boolean? @default(false) @map("ph_partial")
+  cloud_online       Boolean? @default(true) @map("cloud_online")
+
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, farmId, boundaryId, timestamp(sort: Desc)])
+  @@index([deviceId])
+  @@map("outdoorreading")
+}
+
+model IndoorReading {
+  id                 String   @id @default(cuid())
+  timestamp          DateTime @default(now())
+  formattedTimestamp String?  @map("formatted_timestamp")
+  deviceId           String   @map("device_id")
+  type               String?  @default("status")
+  userId             Int      @map("user_id")
+  farmId             String?  @map("farm_id")
+  boundaryId         String?  @map("boundary_id")
+
+  // Core sensor readings
+  ph                 Float?   @map("ph")
+  ec                 Float?   @map("ec")
+  temperature        Float?   @map("temperature")
+  wtlvl              Float?   @map("wtlvl")
+
+  // System & Safety status
+  alert              Int?     @default(0)
+  safe               Boolean? @default(true)
+  ready              Boolean? @default(false)
+  estop              Boolean? @default(false)
+
+  // Gateway RF Telemetry
+  gw_rssi            Float?   @map("gw_rssi")
+  gw_snr             Float?   @map("gw_snr")
+
+  // Raw payload
+  rawPayload         Json?    @map("raw_payload")
+
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, farmId, boundaryId, timestamp(sort: Desc)])
+  @@index([deviceId])
+  @@map("indoorreading")
+}
+
+model Growth {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  plantId        Int
+  growthDuration Decimal
+  createdAt      DateTime @default(now())
+  plant          Plant    @relation(fields: [plantId], references: [plantId], map: "Growth_plantId_fkey_rel")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Growth_userId_fkey_rel")
+
+  @@index([plantId], map: "Growth_plantId_fkey")
+  @@index([userId], map: "Growth_userId_fkey")
+}
+
+model Plant {
+  plantId                Int                @id
+  plantName              String             @db.VarChar(50)
+  growthPhase            String             @db.VarChar(50)
+  gdd                    String             @db.VarChar(20)
+  tbase                  Float
+  toptimal               Float
+  vpd                    String             @db.VarChar(20)
+  waterRequirement       String             @db.VarChar(20)
+  nFertilizerRequirement Float
+  pFertilizerRequirement Float
+  kFertilizerRequirement Float
+  gsMax                  Float
+  minTemp                Float
+  maxTemp                Float
+  iOptimal               String             @db.VarChar(20)
+  tolerance              String             @db.VarChar(20)
+  potentialEtp           Float
+  r0Max                  String             @db.VarChar(255)
+  toptR                  Float
+  sigmaR                 Float
+  vmaxOptN               Float
+  vmaxOptP               Float
+  vmaxOptK               Float
+  sigmaV                 Float
+  crefN                  Float
+  crefP                  Float
+  crefK                  Float
+  alpha                  Float
+  tref                   Float
+  km                     Float
+  k                      Float
+  zr                     Float
+  sigma                  String             @db.VarChar(20)
+  sigmaLight             String
+  DLIRange               String
+  mnN                    Float
+  mnP                    Float
+  mnK                    Float
+  e                      Float
+  uTotal                 String?            @db.VarChar(20)
+  Mopt                   String?
+  rOpt                   String             @db.VarChar(20)
+  q10                    Float
+  co2ref                 Int
+  mThreshold             Float?
+  alphaSigmoid           Float?
+  delta                  Float?
+  rBase                  Float?
+  growth                 Growth[]
+  farm                   Farm[]
+  userPlants             UserPlant[]
+  stressReadings         StressReading[]
+  nutrientAnalyses       NutrientAnalysis[]
+  plantHistory           PlantHistory[]
+}
+
+model Notifications {
+  id                              Int                     @id @default(autoincrement())
+  userId                          Int
+  isRead                          Boolean                 @default(false)
+  farmId                          String?
+  notificationType                String
+  confirmationStatus              String
+  updatePlantWithHistoryStatusId  Int?
+  typeOfNotification              String?                 @default("general")
+  message                         String
+  createdAt                       DateTime                @default(now())
+  updatePlantWithHistory          updatePlantWithHistory? @relation(fields: [updatePlantWithHistoryStatusId], references: [id])
+  user_notifications_userIdTouser User                    @relation("notifications_userIdTouser", fields: [userId], references: [id], onDelete: Cascade, map: "Notifications_userId_fkey_rel")
+  farm                            Farm?                   @relation(fields: [farmId], references: [id])
+
+  @@index([userId], map: "Notifications_userId_fkey")
+  @@index([userId, isRead])
+}
+
+model Screenview {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  screenName String
+  createdAt  DateTime @default(now())
+  Duration   Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([screenName])
+  @@index([userId])
+}
+
+model Drawing {
+  id        String   @id @default(uuid())
+  userId    Int
+  name      String?
+  geometry  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Device {
+  id                    String   @id @default(cuid())
+  deviceId              String   @unique
+  userId                String?
+  emailId               String?
+  hasOutdoorFertigation Boolean  @default(false)
+  hasIndoorFertigation  Boolean  @default(false)
+  hasValve              Boolean  @default(false)
+  hasAppliance          Boolean  @default(false)
+  hasBCS                Boolean  @default(false)
+}
+
+model Farm {
+  id                     String                   @id @default(cuid())
+  name                   String
+  userId                 Int
+  plantId                Int?
+  gdd                    Float?
+  totalArea              Float                    @default(0)
+  totalAreaAcres         Float                    @default(0)
+  location               Json?
+  metadata               Json?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  phaseId                Int?
+  phaseName              String?
+  user                   User                     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "Farm_userId_fkey_rel")
+  plant                  Plant?                   @relation(fields: [plantId], references: [plantId], map: "Farm_plant_Id_fkey")
+  boundaries             farmBoundary[]           @relation("FarmToBoundary")
+  devices                NodeRedDeviceDetails[]   @relation("FarmToDevice")
+  environmentalReadings  EnvironmentalReading[]
+  stressReadings         StressReading[]
+  nutrientAnalyses       NutrientAnalysis[]
+  nodereddevicesettings  NodeRedDeviceSettings[]
+  updatePlantWithHistory updatePlantWithHistory[]
+  Notifications          Notifications[]
+  batch                  batch[]
+  plantHistory           PlantHistory[]
+  dailyFarmReports       DailyFarmReport[]
+  nutrientTargetSettings NutrientTargetSetting[]
+  aiUsages               AIUsage[]
+  outdoorLogs            OutdoorLog[]
+  indoorLogs             IndoorLog[]
+  sensorValidities       SensorValidity[]
+  lightParams            LightParam[]
+
+  @@index([userId], map: "Farm_userId_fkey")
+  @@index([plantId], map: "Farm_plantId_fkey")
+}
+
+model AdminNotification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  createdAt DateTime @default(now())
+  message   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Buyer {
+  id                 Int       @id @default(autoincrement())
+  buyerName          String
+  buyerPic           String?   @db.Text
+  companyName        String?
+  address            String
+  phoneNumber        String
+  emailAddress       String    @unique
+  taxId              String
+  resaleCertificate  String?
+  salesTaxPercentage String?
+  deliveryDetails    String?
+  paymentMode        String
+  crop               String
+  variety            String
+  size               String
+  weightPreference   String
+  shape              String
+  texture            String
+  termsAndConditions String?   @db.Text
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  farmerId           Int
+  farmer             User      @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  profits            Profit[]
+  expenses           Expense[]
+
+  @@index([farmerId])
+}
+
+model Chat {
+  id         String   @id @default(cuid())
+  userId     Int
+  sessionId  String
+  content    String   @db.Text
+  result     String   @db.Text
+  tokenUsage Json?
+  createdAt  DateTime @default(now())
+  user       User     @relation("UserChats", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, sessionId, createdAt])
+}
+
+model DeviceReading {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  farmId          Int?
+  masterId        String
+  co2             Float?
+  windSpeed       Float?
+  par             Float?
+  cropTemperature Float?
+  cropHumidity    Float?
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model Expense {
+  id            Int           @id @default(autoincrement())
+  category      String
+  boundaryId    String?
+  expenseName   String
+  amountSpend   Decimal
+  autoDebit     Boolean       @default(false)
+  autoFrequency String?
+  dueDate       DateTime
+  buyerId       Int?
+  farmerId      Int
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  paid          Boolean       @default(false)
+  user          User          @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  buyer         Buyer?        @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  farmBoundary  farmBoundary? @relation(fields: [boundaryId], references: [id])
+
+  @@index([farmerId])
+  @@index([boundaryId])
+  @@index([farmerId, dueDate])
+  @@index([farmerId, paid])
+}
+
+model farmBoundary {
+  id                    String                 @id @default(cuid())
+  name                  String
+  farmId                String
+  userId                Int
+  coordinates           Json
+  area                  Float                  @default(0)
+  areaAcres             Float                  @default(0)
+  cropType              String?
+  color                 String?
+  plantId               Int?
+  gdd                   Float?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  phaseId               Int?
+  phaseName             String?
+  farm                  Farm                   @relation("FarmToBoundary", fields: [farmId], references: [id], onDelete: Cascade, map: "FarmBoundary_farmId_fkey_rel")
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade, map: "FarmBoundary_userId_fkey_rel")
+  gridCells             gridCell[]             @relation("BoundaryToGridCell")
+  profits               Profit[]
+  expenses              Expense[]
+  environmentalReadings EnvironmentalReading[]
+  stressReadings        StressReading[]
+  nutrientAnalyses      NutrientAnalysis[]
+  outdoorLogs           OutdoorLog[]
+  indoorLogs            IndoorLog[]
+  sensorValidities      SensorValidity[]
+  devices               NodeRedDeviceDetails[] @relation("BoundaryToDevice")
+  nutrientTargetSettings NutrientTargetSetting[]
+  lightParams            LightParam[]
+
+  @@index([farmId], map: "FarmBoundary_farmId_fkey")
+  @@index([userId], map: "FarmBoundary_userId_fkey")
+}
+
+model gridCell {
+  id                    String                 @id @default(cuid())
+  boundaryId            String
+  userId                Int
+  row                   Int
+  col                   Int
+  plantId               Int?
+  gdd                   Float?
+  health                String                 @default("unknown")
+  soilMoisture          Float?
+  soilTemp              Float?
+  cropGrowth            Float?
+  nutrientLevel         Json?
+  coordinates           Json
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  boundary              farmBoundary           @relation("BoundaryToGridCell", fields: [boundaryId], references: [id], onDelete: Cascade, map: "GridCell_boundaryId_fkey_rel")
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade, map: "GridCell_userId_fkey_rel")
+  environmentalReadings EnvironmentalReading[]
+  stressReadings        StressReading[]
+  nutrientAnalyses      NutrientAnalysis[]
+
+  @@unique([boundaryId, row, col])
+  @@index([boundaryId], map: "GridCell_boundaryId_fkey")
+  @@index([userId], map: "GridCell_userId_fkey")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Profit {
+  id                      Int           @id @default(autoincrement())
+  amountEarned            Decimal       @db.Decimal(10, 2)
+  buyerId                 Int
+  farmerId                Int
+  createdAt               DateTime      @default(now())
+  dueDate                 DateTime
+  termsAndConditions      String?       @db.Text
+  paid                    Boolean       @default(false)
+  farmBoundaryId          String?
+  profitType              String?
+  typeOfProfit            String?
+  soldPriceAGrade         Decimal?      @db.Decimal(10, 2)
+  soldQuantityAGrade      Decimal?      @db.Decimal(10, 2)
+  rejectionQuantityAGrade Decimal?      @db.Decimal(10, 2)
+  soldPriceBGrade         Decimal?      @db.Decimal(10, 2)
+  soldQuantityBGrade      Decimal?      @db.Decimal(10, 2)
+  rejectionQuantityBGrade Decimal?      @db.Decimal(10, 2)
+  rejectionQuantityTotal  Decimal?      @db.Decimal(10, 2)
+  buyer                   Buyer         @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  farmer                  User          @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  farmBoundary            farmBoundary? @relation(fields: [farmBoundaryId], references: [id])
+
+  @@index([farmerId])
+  @@index([buyerId])
+  @@index([farmBoundaryId])
+  @@index([farmerId, dueDate])
+  @@index([farmerId, paid])
+  @@index([farmerId, createdAt])
+}
+
+model SearchHistory {
+  id        String   @id @default(uuid())
+  query     String
+  userId    Int?
+  location  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId], map: "searchHistory_userId_idx")
+}
+
+model UserDevice {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  deviceInfo Json
+  deviceId   String
+  lastLogin  DateTime @default(now())
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model UserPlant {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  plantId     Int
+  email       String?
+  plantName   String?
+  growthPhase String?
+  farmId      String?
+  farmName    String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plant       Plant    @relation(fields: [plantId], references: [plantId], onDelete: Cascade)
+
+  @@unique([userId, plantId, farmId], map: "userPlant_userId_plantId_farmId_key")
+  @@index([plantId], map: "userPlant_plantId_idx")
+  @@index([userId], map: "userPlant_userId_idx")
+}
+
+model Payment {
+  id                     Int                  @id @default(autoincrement())
+  userId                 Int
+  plan                   Int?
+  createdAt              DateTime             @default(now())
+  EndsAt                 DateTime
+  amount                 Int
+  currency               String
+  receipt                String
+  notes                  Json?
+  status                 String               @default("pending")
+  razorpayOrderId        String?              @unique
+  razorpayPaymentId      String?
+  razorpaySignature      String?
+  razorpaySubscriptionId String?
+  user                   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  financialManagement    FinancialManagement?
+  iotDevice              IotDevice?
+
+  @@index([razorpayOrderId])
+}
+
+model FinancialManagement {
+  id        String   @id @default(cuid())
+  userId    Int      @unique
+  paymentId Int?     @unique
+  status    String
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment   Payment? @relation(fields: [paymentId], references: [id])
+
+  @@index([userId])
+}
+
+model IotDevice {
+  id          String    @id @default(cuid())
+  deviceId    String    @unique
+  userId      Int
+  paymentId   Int?      @unique
+  status      String
+  activatedAt DateTime?
+  lastSync    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment     Payment?  @relation(fields: [paymentId], references: [id])
+
+  @@index([userId])
+  @@index([deviceId])
+}
+
+model Sampletable {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+}
+
+model batch {
+  id                  Int      @id @default(autoincrement())
+  userId              Int
+  category            String
+  batchName           String
+  companyName         String
+  costOfSeeds         Int
+  expectedHarvestDate DateTime
+  fieldLocation       String
+  farmId              String?
+  germinationDate     DateTime
+  netBioYield         Int
+  noOfSeedsToBeSown   Int
+  plantVariety        String
+  previousGrownCrop   String
+  seedSownBy          String
+  Event               Event[]
+  seedsSowingDate     DateTime
+  farm                Farm?    @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([farmId])
+}
+
+model updatePlantWithHistory {
+  id                 Int             @id @default(autoincrement())
+  userId             Int
+  phase              String
+  plantId            Int
+  achievedAt         DateTime        @default(now())
+  farmId             String?
+  confirmationStatus String          @default("PENDING")
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Farm               Farm?           @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  notifications      Notifications[]
+
+  @@index([plantId])
+  @@index([userId])
+  @@index([farmId])
+}
+
+model NodeRedDeviceDetails {
+  id                    Int                     @id @default(autoincrement())
+  deviceId              String                  @unique
+  deviceName            String
+  deviceCategory        String
+  userId                Int
+  farmId                String?
+  boundaryId            String?
+  failSafeOnMinutes     Int                     @default(15)
+  failSafeOffMinutes    Int                     @default(10)
+  selectedValve         String?
+  failSafeStatus        String                  @default("NORMAL")
+  failSafeReason        String?
+  failSafeEnteredAt     DateTime?
+  lastAckAt             DateTime?
+  cloudStatus           String                  @default("ONLINE")
+  lastHeartbeatAt       DateTime?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  user                  User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm                  Farm?                   @relation("FarmToDevice", fields: [farmId], references: [id], onDelete: SetNull)
+  boundary              farmBoundary?           @relation("BoundaryToDevice", fields: [boundaryId], references: [id], onDelete: SetNull)
+  NodeRedDeviceSettings NodeRedDeviceSettings[]
+  ActivateSettings      ActivateSettings[]
+  DeviceRuntimeLog      DeviceRuntimeLog[]
+
+  @@index([userId])
+  @@index([farmId])
+  @@index([boundaryId])
+}
+
+model DeviceRuntimeLog {
+  id              Int                  @id @default(autoincrement())
+  deviceId        Int
+  userId          Int
+  farmId          String?
+  boundaryId      String?
+  turnedOnAt      DateTime
+  turnedOffAt     DateTime?
+  durationSeconds Int?
+  status          String               @default("RUNNING")
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  device          NodeRedDeviceDetails @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId])
+  @@index([userId])
+  @@index([farmId])
+  @@index([boundaryId])
+  @@index([turnedOnAt])
+  @@index([status])
+}
+
+model NodeRedDeviceSettings {
+  id                     Int                  @id @default(autoincrement())
+  ActivationDate         DateTime
+  EndDate                DateTime
+  StartTime              DateTime
+  EndTime                DateTime
+  TimeFrequency          String
+  FarmId                 String
+  nodereddevicedetailsId String
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  NodeRedDeviceDetails   NodeRedDeviceDetails @relation(fields: [nodereddevicedetailsId], references: [deviceId], onDelete: Cascade)
+  farm                   Farm                 @relation(fields: [FarmId], references: [id], onDelete: Cascade)
+
+  @@index([FarmId])
+  @@index([nodereddevicedetailsId])
+}
+
+model ActivateSettings {
+  id                   Int                  @id @default(autoincrement())
+  deviceId             Int
+  StartTime            DateTime
+  EndTime              DateTime
+  status               String
+  NodeRedDeviceDetails NodeRedDeviceDetails @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId])
+  @@index([id])
+}
+
+model AutomationRule {
+  id              String                @id @default(cuid())
+  userId          Int
+  farmId          String?
+  boundaryId      String?
+  parameterType   String?
+  parameterName   String?
+  eventName       String?
+  isActive        Boolean               @default(true)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  ruleName        String
+  syncedToNodeRed Boolean               @default(false)
+  nodeRedSyncedAt DateTime?
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  triggers        AutomationTrigger[]
+  actions         AutomationAction[]
+  executions      AutomationExecution[]
+
+  @@unique([userId, ruleName])
+  @@index([userId])
+  @@index([farmId])
+  @@index([isActive])
+  @@index([syncedToNodeRed])
+}
+
+model AutomationTrigger {
+  id                 String                @id @default(cuid())
+  ruleId             String
+  triggerPoint       String
+  lowerThreshold     Float?
+  upperThreshold     Float?
+  comparisonOperator String?
+  createdAt          DateTime              @default(now())
+  triggerType        String
+  unit               String?
+  timerOption        String? // "Stopwatch" or "Timer"
+  targetTime         String? // For Timer mode - e.g. "14:30"
+  runFor             String? // For Stopwatch mode - e.g. "30 Mins"
+  startCondition     String? // e.g. "Immediately"
+  gap                String? // e.g. "5 Mins"
+  repeatOption       String? // e.g. "Once", "Daily"
+  endCondition       String? // e.g. "Run once"
+  updatedAt          DateTime              @updatedAt
+  rule               AutomationRule        @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  actions            AutomationAction[]
+  executions         AutomationExecution[]
+
+  @@index([ruleId])
+}
+
+model AutomationAction {
+  id             String                @id @default(cuid())
+  triggerId      String
+  actionType     String
+  actionData     Json?
+  actionName     String
+  createdAt      DateTime              @default(now())
+  deviceId       String?
+  executionOrder Int                   @default(1)
+  isActive       Boolean               @default(true)
+  ruleId         String
+  updatedAt      DateTime              @updatedAt
+  rule           AutomationRule        @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  trigger        AutomationTrigger     @relation(fields: [triggerId], references: [id], onDelete: Cascade)
+  timings        AutomationTiming[]
+  executions     AutomationExecution[]
+
+  @@index([ruleId])
+  @@index([triggerId])
+}
+
+model AutomationTiming {
+  id         String           @id @default(cuid())
+  startDate  DateTime?
+  endDate    DateTime?
+  startTime  String
+  endTime    String
+  frequency  String           @default("Daily")
+  daysOfWeek Json?
+  actionId   String
+  createdAt  DateTime         @default(now())
+  isActive   Boolean          @default(true)
+  updatedAt  DateTime         @updatedAt
+  action     AutomationAction @relation(fields: [actionId], references: [id], onDelete: Cascade)
+
+  @@index([actionId])
+}
+
+model AutomationExecution {
+  id              String             @id @default(cuid())
+  ruleId          String
+  triggerId       String?
+  actionId        String?
+  executedAt      DateTime           @default(now())
+  triggerValue    Float?
+  executionStatus String
+  errorMessage    String?
+  executionData   Json?
+  rule            AutomationRule     @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  trigger         AutomationTrigger? @relation(fields: [triggerId], references: [id])
+  action          AutomationAction?  @relation(fields: [actionId], references: [id])
+
+  @@index([ruleId])
+  @@index([executedAt])
+}
+
+model PlantHistory {
+  id        String   @id @default(cuid())
+  userId    Int
+  plantId   Int
+  plantName String
+  farmId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plant     Plant    @relation(fields: [plantId], references: [plantId])
+  farm      Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([plantId])
+  @@index([farmId])
+}
+
+model Event {
+  id          Int       @id @default(autoincrement())
+  batchId     Int
+  eventType   String
+  eventData   Json?
+  eventDate   DateTime?
+  status      String?
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  batch       batch     @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
+}
+
+model SeedCompanies {
+  id          Int    @id @default(autoincrement())
+  Country     String
+  State       String
+  CompanyName String
+  Address     String
+}
+
+model EmailVerification {
+  id        Int      @id @default(autoincrement())
+  email     String
+  otpHash   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model CronLock {
+  jobName  String   @id
+  lockedAt DateTime @default(now())
+}
+
+model QrCode {
+  id        String   @id @default(cuid())
+  deviceId  String   @unique
+  name      String
+  category  String
+  createdAt DateTime @default(now())
+}
+
+// ─── Admin: Security & Access Control ───────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    Int
+  action     String
+  targetType String
+  targetId   String?
+  details    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  admin      User     @relation("AuditLogAdmin", fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model LoginActivity {
+  id            String   @id @default(cuid())
+  userId        Int?
+  email         String
+  status        String
+  ipAddress     String?
+  userAgent     String?
+  failureReason String?
+  location      String?
+  createdAt     DateTime @default(now())
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  permissions Json
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+}
+
+// ─── Admin: Notification Management ─────────────────────────────────────────
+
+model NotificationTemplate {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  notificationType   String
+  typeOfNotification String
+  messageTemplate    String   @db.Text
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([notificationType])
+}
+
+model StressThreshold {
+  id               Int      @id @default(autoincrement())
+  parameter        String   @unique
+  minValue         Float?
+  maxValue         Float?
+  notificationType String
+  isActive         Boolean  @default(true)
+  cooldownMinutes  Int      @default(30)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model DeliveryLog {
+  id           String    @id @default(cuid())
+  channel      String
+  recipient    String
+  subject      String?
+  status       String
+  errorMessage String?
+  sentAt       DateTime  @default(now())
+  deliveredAt  DateTime?
+  userId       Int?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([channel])
+  @@index([status])
+  @@index([sentAt])
+}
+
+// ─── Admin: Content & Reference Data ────────────────────────────────────────
+
+model EventType {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  category    String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+}
+
+model ExpenseCategoryConfig {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SubscriptionPlan {
+  id           Int      @id @default(autoincrement())
+  planName     String
+  planCode     Int      @unique
+  billingCycle String
+  price        Float
+  currency     String   @default("INR")
+  features     Json
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model NotificationTypeConfig {
+  id          Int      @id @default(autoincrement())
+  name        String
+  key         String   @unique
+  description String?
+  channel     String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([channel])
+}
+
+model DailyFarmReport {
+  id           String   @id @default(cuid())
+  userId       Int
+  farmId       String
+  reportDate   DateTime
+  reportHtml           String   @db.Text
+  reportText           String   @db.Text
+  isEligibleForReport  Boolean  @default(true)
+  tokenUsage           Json?
+  status               String   @default("completed")
+  errorMsg     String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm         Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  aiUsages     AIUsage[]
+
+  @@unique([userId, farmId, reportDate])
+  @@index([userId])
+  @@index([farmId])
+  @@index([reportDate])
+}
+
+model ZeroDataCount {
+  id         Int      @id @default(autoincrement())
+  deviceId   String   @unique
+  userId     Int?
+  farmId     String?
+  boundaryId String?
+  count      Int      @default(0)
+  updatedAt  DateTime @updatedAt
+}
+
+model AIUsage {
+  id           String   @id @default(cuid())
+
+  userId       Int
+  farmId       String?
+  reportId     String?
+
+  model        String
+  reportType   String?  @default("daily-farm-report")
+
+  inputTokens  Int
+  outputTokens Int
+  totalTokens  Int
+
+  inputCost    Decimal  @db.Decimal(12, 6)
+  outputCost   Decimal  @db.Decimal(12, 6)
+  totalCost    Decimal  @db.Decimal(12, 6)
+
+  createdAt    DateTime @default(now())
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm         Farm?            @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  report       DailyFarmReport? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([farmId])
+  @@index([reportId])
+  @@index([createdAt])
+}
+
+
+model NutrientTargetSetting {
+  id               String        @id @default(cuid())
+  userId           Int
+  farmId           String?       @map("farm_id")
+  boundaryId       String?       @map("boundary_id")
+  targetNitrogen   Float?        @default(1208)
+  targetPhosphorus Float?        @default(6067)
+  targetPotassium  Float?        @default(18067)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm     Farm?         @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  boundary farmBoundary? @relation(fields: [boundaryId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([farmId])
+  @@index([boundaryId])
+}
+
+model OutdoorLog {
+  id         String   @id @default(cuid())
+  timestamp  DateTime @default(now())
+  userId     Int?
+  farmId     String?  @map("farm_id")
+  boundaryId String?  @map("boundary_id")
+  deviceId   String?  @map("device_id")
+
+  type       String   // "active" | "error" | "calibration" | "info" | "warning"
+  category   String?  // "fertigation" | "sensor" | "system" | "automation" | "telemetry"
+  title      String
+  message    String   @db.Text
+  details    String?  @db.Text
+  metadata   Json?    // Structured JSON metadata (e.g. { sensor: "phA", pt: 1, ok: true })
+
+  status     String?  @default("completed") // "completed" | "failed" | "pending"
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm     Farm?         @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  boundary farmBoundary? @relation(fields: [boundaryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, farmId, timestamp(sort: Desc)])
+  @@index([type])
+  @@index([category])
+  @@index([timestamp])
+  @@map("outdoor_logs")
+}
+
+model IndoorLog {
+  id         String   @id @default(cuid())
+  timestamp  DateTime @default(now())
+  userId     Int?
+  farmId     String?  @map("farm_id")
+  boundaryId String?  @map("boundary_id")
+  deviceId   String?  @map("device_id")
+
+  type       String   // "active" | "error" | "calibration" | "info" | "warning"
+  category   String?  // "fertigation" | "sensor" | "system" | "automation" | "telemetry"
+  title      String
+  message    String   @db.Text
+  details    String?  @db.Text
+  metadata   Json?    // Structured JSON metadata
+
+  status     String?  @default("completed") // "completed" | "failed" | "pending"
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm     Farm?         @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  boundary farmBoundary? @relation(fields: [boundaryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, farmId, timestamp(sort: Desc)])
+  @@index([type])
+  @@index([category])
+  @@index([timestamp])
+  @@map("indoor_logs")
+}
+
+
+model SensorValidity {
+  id                String   @id @default(cuid())
+
+  userId            Int?     @map("user_id")
+  farmId            String?  @map("farm_id")
+  boundaryId        String?  @map("boundary_id")
+  deviceId          String?  @map("device_id")
+
+  type              String?  @default("outdoor") // "indoor" | "outdoor"
+  sensor            String   // "ph" | "ec"
+
+  validityStartDate DateTime @map("validity_start_date")
+  validityEndDate   DateTime @map("validity_end_date")
+  validityDays      Int      @map("validity_days")
+
+  status            String   @default("active") // "active" | "expired" | "replaced"
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user     User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm     Farm?         @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  boundary farmBoundary? @relation(fields: [boundaryId], references: [id], onDelete: SetNull)
+
+  @@index([farmId, boundaryId, deviceId])
+  @@index([userId])
+  @@index([sensor])
+  @@index([status])
+  @@index([type])
+
+  @@map("sensor_validity")
+}
+
+// ─── Database Backups ────────────────────────────────────────────────────────
+
+model DatabaseBackup {
+  id                String    @id @default(cuid())
+  status            String    // RUNNING, SUCCESS, FAILED
+  backupType        String    // AUTOMATIC, MANUAL
+  fileName          String
+  fileSize          BigInt    @default(0)
+  googleDriveFileId String?
+  startedAt         DateTime  @default(now())
+  completedAt       DateTime?
+  errorMessage      String?
+  triggeredBy       String    // e.g. "cron", "admin:123"
+  createdAt         DateTime  @default(now())
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("database_backups")
+}
+
+// ─── Light Parameter Analysis ───────────────────────────────────────────────
+
+model LightParam {
+  id           String   @id @default(cuid())
+  userId       Int
+  farmId       String?
+  boundaryId   String?
+  timestamp    DateTime @default(now())
+
+  clear        Float?
+  f1           Float?
+  f2           Float?
+  f3           Float?
+  f4           Float?
+  f5           Float?
+  f6           Float?
+  f7           Float?
+  f8           Float?
+  nir          Float?
+
+  ndvi         Float?
+  chlorophyllA Float?
+  chlorophyllB Float?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  farm         Farm?         @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  boundary     farmBoundary? @relation(fields: [boundaryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, farmId, boundaryId, timestamp(sort: Desc)])
+  @@index([timestamp])
+  @@map("light_params")
+}
+
+

@@ -1,0 +1,31 @@
+export function getCropEmoji(cropName?: string | null): string {
+  if (!cropName) return '🌱';
+  const lower = cropName.toLowerCase().trim();
+  if (lower.includes('strawberr')) return '🍓';
+  if (lower.includes('blueberr')) return '🫐';
+  if (lower.includes('tomat')) return '🍅';
+  if (lower.includes('corn') || lower.includes('maize')) return '🌽';
+  if (lower.includes('wheat') || lower.includes('paddy') || lower.includes('rice')) return '🌾';
+  if (lower.includes('potat')) return '🥔';
+  if (lower.includes('appl')) return '🍎';
+  if (lower.includes('banan')) return '🍌';
+  if (lower.includes('grap')) return '🍇';
+  if (lower.includes('mang')) return '🥭';
+  if (lower.includes('chili') || lower.includes('chilli') || lower.includes('pepper')) return '🌶️';
+  if (lower.includes('cucumb')) return '🥒';
+  if (lower.includes('carrot')) return '🥕';
+  if (lower.includes('onion')) return '🧅';
+  if (lower.includes('garlic')) return '🧄';
+  if (lower.includes('cotton')) return '🪴';
+  if (lower.includes('sugarcane')) return '🎋';
+  if (lower.includes('coconut')) return '🥥';
+  if (lower.includes('lemon') || lower.includes('citrus') || lower.includes('lime')) return '🍋';
+  if (lower.includes('waterm') || lower.includes('melon')) return '🍉';
+  if (lower.includes('avocado')) return '🥑';
+  if (lower.includes('eggplant') || lower.includes('brinjal')) return '🍆';
+  if (lower.includes('pea') || lower.includes('bean')) return '🫛';
+  if (lower.includes('mushroom')) return '🍄';
+  if (lower.includes('tea') || lower.includes('coffee')) return '☕';
+  if (lower.includes('flower') || lower.includes('rose') || lower.includes('marigold')) return '🌸';
+  return '🌱';
+}
