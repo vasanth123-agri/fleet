@@ -45,6 +45,7 @@ export interface CustomerDetailResponse {
 export interface FarmDetailApiResponse {
   farm: FarmDetailResponse;
   latestReading: LatestReadingDTO | null;
+  latestReadingRaw?: any;
   environmentalHistory: EnvironmentalHistoryPoint[];
   batteryHistory: BatteryHistoryPoint[];
   fertigation: FertigationSummary | null;
@@ -278,6 +279,7 @@ export const fleetApi = createApi({
         return {
           farm: data.farm,
           latestReading: data.latestReading || null,
+          latestReadingRaw: data.latestReadingRaw || null,
           environmentalHistory: data.environmentalHistory || [],
           batteryHistory: data.batteryHistory || [],
           fertigation: data.fertigation || null,

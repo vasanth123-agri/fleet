@@ -13,6 +13,7 @@ import {
   Clock,
   Layers,
   AlertCircle,
+  Eye,
 } from 'lucide-react';
 import { useGetFarmDetailQuery } from '../store/fleetApi';
 import { StatusBadge } from '../components/StatusBadge';
@@ -24,6 +25,7 @@ import { FertigationCard } from '../components/FertigationCard';
 import { FertigationChart } from '../components/FertigationChart';
 import { DateRangeSelector } from '../components/DateRangeSelector';
 import { DeviceStatusList } from '../components/DeviceStatusList';
+import { TelemetryJsonModal } from '../components/TelemetryJsonModal';
 import { getCropEmoji } from '../utils/cropEmoji';
 
 interface FarmMonitoringPageProps {
@@ -38,6 +40,7 @@ export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
   onSelectCustomer,
 }) => {
   const [range, setRange] = useState<string>('24h');
+  const [modalPayload, setModalPayload] = useState<any | null>(null);
 
   // RTK Query query hook
   const {
@@ -52,7 +55,7 @@ export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
     return (
       <div className="glass-card rounded-2xl p-16 flex flex-col items-center justify-center space-y-3 text-slate-500">
         <div className="w-10 h-10 border-2 border-[#00665E] border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm font-medium">Acquiring farm sensor telemetry via RTK Query...</span>
+        <span className="text-sm font-medium">Acquiring farm sensor telemetry...</span>
       </div>
     );
   }
@@ -77,12 +80,52 @@ export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
   const {
     farm,
     latestReading,
+    latestReadingRaw: apiLatestReadingRaw,
     environmentalHistory = [],
     batteryHistory = [],
     fertigation,
     fertigationHistory = [],
     devices = [],
   } = data;
+
+  const farmModalData = {
+    customerName: `${farm.userName || farm.email || 'Customer'} (${farm.name})`,
+    email: farm.email,
+    formattedReadingTime: latestReading?.formattedTimestamp || farm.formattedReadingTime,
+    latestReadingRaw: apiLatestReadingRaw || {
+      farm_id: farm.farmId,
+      farm_name: farm.name,
+      crop: farm.crop || farm.cropType,
+      telemetry_id: latestReading?.id,
+      timestamp_iso: latestReading?.timestamp,
+      timestamp_ist: latestReading?.formattedTimestamp,
+      climate: {
+        temperature_c: latestReading?.temperature,
+        humidity_pct: latestReading?.humidity,
+        vpd_kpa: latestReading?.vpd,
+        co2_ppm: latestReading?.co2,
+        wind_speed_ms: latestReading?.windSpeed,
+        direct_radiation_wm2: latestReading?.directRadiation,
+        par_umol_m2_s: latestReading?.par,
+      },
+      soil_root_zone: {
+        soil_temperature_c: latestReading?.soilTemperature,
+        soil_moisture_pct: latestReading?.soilMoisture,
+        soil_ec_mscm: latestReading?.soilElectroConductivity,
+        nitrogen_n_mgkg: latestReading?.soilNitrogen,
+        phosphorus_p_mgkg: latestReading?.soilPhosphorus,
+        potassium_k_mgkg: latestReading?.soilPotassium,
+        ph_master: latestReading?.phMaster,
+      },
+      power: {
+        battery_percentage: latestReading?.batteryPercentage,
+        battery_voltage_v: latestReading?.batteryVoltage,
+        battery_current_ma: latestReading?.batteryCurrent,
+        is_charging: latestReading?.isCharging,
+      },
+      reading_status: latestReading?.readingStatus || farm.readingStatus,
+    },
+  };
 
   const hasBattery =
     (batteryHistory &&
@@ -147,6 +190,14 @@ export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
                 <Sprout className="w-6 h-6 text-[#00665E]" />
                 <span>{farm.name}</span>
               </h1>
+              {/* Eye icon for farm raw JSON popup */}
+              <button
+                onClick={() => setModalPayload(farmModalData)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-[#00665E] hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-200 transition-all shadow-2xs"
+                title="View Farm Telemetry in JSON format"
+              >
+                <Eye className="w-4 h-4" />
+              </button>
               <StatusBadge status={farm.readingStatus} size="md" />
             </div>
 
@@ -211,6 +262,13 @@ export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
           <h2 className="text-base font-bold text-slate-900 flex items-center space-x-2">
             <Activity className="w-4 h-4 text-[#00665E]" />
             <span>Latest IoT Environmental & Soil Telemetry</span>
+            <button
+              onClick={() => setModalPayload(farmModalData)}
+              className="p-1 rounded-lg text-slate-400 hover:text-[#00665E] hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition-all ml-1"
+              title="View Raw Telemetry JSON"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </button>
           </h2>
           {latestReading && (
             <span className="text-xs font-mono text-slate-500">
@@ -360,9 +418,7 @@ export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
                 Battery & Power Monitoring ({range.toUpperCase()})
               </h3>
             </div>
-            <span className="text-xs text-slate-500">
-              Node battery percentage and operating voltage
-            </span>
+           
           </div>
 
           {/* Real-time Vertical Battery Gauge Card */}
@@ -414,6 +470,15 @@ export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
           <DeviceStatusList devices={devices} />
         </div>
       )}
+
+      {/* Raw Telemetry JSON Modal */}
+      {modalPayload && (
+        <TelemetryJsonModal
+          customer={modalPayload}
+          onClose={() => setModalPayload(null)}
+        />
+      )}
     </div>
   );
 };
+

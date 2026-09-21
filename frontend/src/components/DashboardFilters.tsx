@@ -108,18 +108,19 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
       </div>
 
       {/* Status Pills */}
-      <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
+      <div className="flex flex-col md:flex-row  gap-2 pt-1 border-t border-slate-100">
         <div className="flex items-center space-x-1 text-xs font-semibold text-slate-500 mr-2">
           <Filter className="w-3.5 h-3.5 text-slate-400" />
           <span>Status:</span>
         </div>
-        {statusOptions.map((opt) => {
+        <div className="flex flex-row  gap-2 overflow-scroll pb-2">
+ {statusOptions.map((opt) => {
           const isActive = status.toUpperCase() === opt.key.toUpperCase();
           return (
             <button
               key={opt.key}
               onClick={() => onStatusChange(opt.key)}
-              className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all ${
+              className={`px-3 py-1 text-xs font-semibold rounded-lg border transition-all shrink-0 ${
                 isActive
                   ? 'bg-[#00665E] text-white font-bold border-[#004D47] shadow-xs'
                   : 'bg-slate-100 text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-200'
@@ -129,6 +130,8 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
             </button>
           );
         })}
+        </div>
+       
       </div>
     </div>
   );

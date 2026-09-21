@@ -1,10 +1,14 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import { config } from './config/index.js';
 import routes from './routes/index.js';
 import prisma from './config/db.js';
 
 const app = express();
+
+// Enable Gzip/Brotli response compression for super-fast payload delivery
+app.use(compression());
 
 // Security & Middleware
 app.use(

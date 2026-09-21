@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Copy, Check, Terminal, FileJson, Calendar, User } from 'lucide-react';
+import { X, Copy, Check, FileJson, User } from 'lucide-react';
 import { CustomerDashboardSummary } from '../types';
 
 interface TelemetryJsonModalProps {
@@ -62,17 +62,12 @@ export const TelemetryJsonModal: React.FC<TelemetryJsonModalProps> = ({ customer
             </div>
             <div>
               <h3 className="text-sm font-bold text-slate-900 flex items-center space-x-2">
-                <span>Latest Telemetry JSON Payload</span>
+                <span className='flex flex-col sm:flex-row gap-0 sm:gap-2'>Recent Data <span className="flex items-center space-x-1 text-gray-500 text-[10px] sm:text-[12px]">({customer.formattedReadingTime || 'No timestamp'})</span></span>
               </h3>
-              <div className="flex items-center space-x-3 text-xs text-slate-500 mt-0.5 font-mono">
+              <div className="flex flex-col items-center space-x-3 text-xs text-slate-500 mt-0.5 font-mono">
                 <span className="flex items-center space-x-1">
                   <User className="w-3 h-3 text-slate-400" />
                   <span className="text-slate-700 font-semibold">{customer.customerName || customer.email}</span>
-                </span>
-                <span>&bull;</span>
-                <span className="flex items-center space-x-1">
-                  <Calendar className="w-3 h-3 text-slate-400" />
-                  <span>{customer.formattedReadingTime || 'No timestamp'}</span>
                 </span>
               </div>
             </div>
@@ -120,11 +115,8 @@ export const TelemetryJsonModal: React.FC<TelemetryJsonModalProps> = ({ customer
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs text-slate-500 font-mono">
-          <div className="flex items-center space-x-2">
-            <Terminal className="w-3.5 h-3.5 text-slate-400" />
-            <span>Format: UTF-8 JSON &bull; Read-Only Telemetry</span>
-          </div>
+        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-end text-xs text-slate-500 font-mono">
+          
           <button
             onClick={onClose}
             className="px-4 py-1.5 bg-[#00665E] hover:bg-[#004D47] text-white font-semibold rounded-lg text-xs transition-all shadow-xs"

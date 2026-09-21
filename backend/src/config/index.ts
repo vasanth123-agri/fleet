@@ -27,5 +27,3 @@ export const config = {
   timezone: cleanEnv(process.env.TIMEZONE) || 'Asia/Kolkata',
   databaseUrl: cleanEnv(process.env.DATABASE_URL),
 };
-
-

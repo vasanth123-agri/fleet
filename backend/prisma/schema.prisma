@@ -61,6 +61,7 @@ model EnvironmentalReading {
   derivedNutrientAnalyses NutrientAnalysis[]
 
   @@index([userId, farmId, boundaryId, timestamp(sort: Desc)])
+  @@index([userId, timestamp(sort: Desc)])
   @@index([boundaryId, timestamp(sort: Desc)])
   @@index([farmId, timestamp(sort: Desc)])
   @@index([timestamp])
@@ -304,6 +305,8 @@ model OutdoorReading {
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, farmId, boundaryId, timestamp(sort: Desc)])
+  @@index([userId, timestamp(sort: Desc)])
+  @@index([farmId, timestamp(sort: Desc)])
   @@index([deviceId])
   @@map("outdoorreading")
 }
@@ -340,6 +343,8 @@ model IndoorReading {
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, farmId, boundaryId, timestamp(sort: Desc)])
+  @@index([userId, timestamp(sort: Desc)])
+  @@index([farmId, timestamp(sort: Desc)])
   @@index([deviceId])
   @@map("indoorreading")
 }

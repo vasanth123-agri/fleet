@@ -261,6 +261,8 @@ export interface DeviceSummaryDTO {
   deviceId: string;
   deviceName: string;
   deviceCategory: string;
+  selectedValve?: string | null;
+  physicalState?: 'OPEN' | 'CLOSED' | 'ON' | 'OFF' | 'UNKNOWN';
   cloudStatus: string;
   lastHeartbeatAt: string | null;
   formattedHeartbeatAt: string | null;

@@ -83,9 +83,7 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
             <span>Customer Fleet Monitoring</span>
            
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Real-time IoT telemetry, battery health, and fertigation oversight across AgriInverse production farms
-          </p>
+        
         </div>
 
         <div className="flex items-center space-x-2">
@@ -95,7 +93,7 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
             className="flex items-center space-x-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 transition-all shadow-xs"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#00665E]' : 'text-slate-500'}`} />
-            <span>{isRefreshing ? 'Syncing...' : 'Refresh Fleet'}</span>
+            <span>{isRefreshing ? 'Syncing...' : 'Refresh'}</span>
           </button>
         </div>
       </div>

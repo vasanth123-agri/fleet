@@ -46,7 +46,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
     return (
       <div className="glass-card rounded-2xl p-12 sm:p-16 flex flex-col items-center justify-center space-y-3 text-slate-500">
         <div className="w-10 h-10 border-2 border-[#00665E] border-t-transparent rounded-full animate-spin" />
-        <span className="text-xs sm:text-sm font-medium">Fetching customer telemetry profile via RTK Query...</span>
+        <span className="text-xs sm:text-sm font-medium">Fetching customer telemetry profile...</span>
       </div>
     );
   }
@@ -151,9 +151,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
               <Sprout className="w-5 h-5 text-[#00665E]" />
               <span>Customer Farms ({farms.length} {farms.length === 1 ? 'Farm' : 'Total Farms'})</span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Live farm plots, data source origin, battery capacities, and real-time environmental telemetry for each farm
-            </p>
+           
           </div>
         </div>
 

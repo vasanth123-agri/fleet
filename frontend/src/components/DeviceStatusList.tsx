@@ -2,14 +2,15 @@ import React from 'react';
 import {
   Wifi,
   WifiOff,
-  Clock,
-  ShieldCheck,
-  ShieldAlert,
   Zap,
+  Power,
   Droplets,
   Radio,
   Sparkles,
   BatteryCharging,
+  CheckCircle2,
+  XCircle,
+  HelpCircle,
 } from 'lucide-react';
 import { DeviceSummaryDTO } from '../types';
 
@@ -28,55 +29,79 @@ export const DeviceStatusList: React.FC<DeviceStatusListProps> = ({ devices }) =
       return {
         label: '🧪 Outdoor Fertigation',
         icon: Sparkles,
-        badgeClass: 'bg-purple-50 text-purple-800 border-purple-200',
         iconClass: 'bg-purple-50 text-purple-700 border-purple-200',
+        badgeClass: 'bg-purple-50 text-purple-800 border-purple-200',
+        isValve: false,
+        isAppliance: false,
       };
     }
     if (lower.includes('indoor')) {
       return {
         label: '🌿 Indoor Fertigation',
         icon: Sparkles,
-        badgeClass: 'bg-teal-50 text-teal-800 border-teal-200',
         iconClass: 'bg-teal-50 text-teal-700 border-teal-200',
+        badgeClass: 'bg-teal-50 text-teal-800 border-teal-200',
+        isValve: false,
+        isAppliance: false,
       };
     }
     if (lower.includes('battery') || lower.includes('bcs')) {
       return {
         label: '🔋 Battery Sensor (BCS)',
         icon: BatteryCharging,
-        badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
         iconClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+        isValve: false,
+        isAppliance: false,
       };
     }
     if (lower.includes('valve')) {
       return {
-        label: '🚰 Valve Actuator',
+        label: '🚰 Solenoid Valve',
         icon: Droplets,
-        badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
-        iconClass: 'bg-blue-50 text-blue-600 border-blue-200',
+        iconClass: 'bg-blue-50 text-blue-700 border-blue-200',
+        badgeClass: 'bg-blue-50 text-blue-800 border-blue-200',
+        isValve: true,
+        isAppliance: false,
       };
     }
     if (lower.includes('ac') || lower.includes('appliance')) {
       return {
-        label: '⚡ Appliance / Relay',
+        label: '⚡ Appliance Relay',
         icon: Zap,
+        iconClass: 'bg-amber-50 text-amber-800 border-amber-200',
         badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
-        iconClass: 'bg-amber-50 text-amber-700 border-amber-200',
+        isValve: false,
+        isAppliance: true,
       };
     }
     if (lower.includes('pump')) {
       return {
         label: '💧 Irrigation Pump',
-        icon: Droplets,
+        icon: Power,
+        iconClass: 'bg-cyan-50 text-cyan-800 border-cyan-200',
         badgeClass: 'bg-cyan-50 text-cyan-800 border-cyan-200',
-        iconClass: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+        isValve: false,
+        isAppliance: true,
+      };
+    }
+    if (lower.includes('fan') || lower.includes('socket')) {
+      return {
+        label: '⚡ Relay Switch',
+        icon: Zap,
+        iconClass: 'bg-amber-50 text-amber-800 border-amber-200',
+        badgeClass: 'bg-amber-50 text-amber-800 border-amber-200',
+        isValve: false,
+        isAppliance: true,
       };
     }
     return {
       label: `📡 ${cat || 'IoT Device'}`,
       icon: Radio,
-      badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
       iconClass: 'bg-slate-100 text-slate-600 border-slate-200',
+      badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+      isValve: false,
+      isAppliance: false,
     };
   };
 
@@ -87,63 +112,116 @@ export const DeviceStatusList: React.FC<DeviceStatusListProps> = ({ devices }) =
         const meta = getCategoryMeta(device.deviceCategory);
         const DeviceIcon = meta.icon;
 
+        // Resolve ON / OFF or OPEN / CLOSE
+        const isValve = meta.isValve;
+        const isAppliance = meta.isAppliance;
+        const rawState = (device.physicalState || 'UNKNOWN').toUpperCase();
+
+        const isOpen = rawState === 'OPEN' || rawState === 'ON';
+        const isClosed = rawState === 'CLOSED' || rawState === 'OFF';
+
         return (
           <div
             key={device.id || device.deviceId}
-            className="glass-card glass-card-hover rounded-xl p-4 space-y-3 bg-white border border-slate-200 shadow-2xs"
+            className={`rounded-2xl p-4 transition-all border ${
+              isValve && isOpen
+                ? 'bg-gradient-to-br from-emerald-50/90 to-emerald-100/60 border-emerald-300 shadow-xs'
+                : isAppliance && isOpen
+                ? 'bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border-teal-300 shadow-xs'
+                : 'bg-white border-slate-200/90 shadow-2xs'
+            }`}
           >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-2.5">
-                <div className={`p-2.5 rounded-xl border ${meta.iconClass}`}>
+            <div className="flex items-center justify-between gap-3">
+              {/* Left: Device Icon & Name */}
+              <div className="flex items-center space-x-3 min-w-0">
+                <div className={`p-2.5 rounded-xl border shrink-0 ${meta.iconClass}`}>
                   <DeviceIcon className="w-4 h-4" />
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900">{device.deviceName || device.deviceId}</h4>
-                  <p className="text-[11px] font-mono text-slate-500">ID: {device.deviceId}</p>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-bold text-slate-900 truncate">
+                    {device.deviceName || device.deviceId}
+                  </h4>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[10px] font-mono font-semibold text-slate-500">
+                      {device.deviceId}
+                    </span>
+                    <span className="text-[10px] text-slate-300">&bull;</span>
+                    <span className="text-[10px] font-semibold text-slate-600">
+                      {meta.label}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <span
-                className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                  isOnline
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    : 'bg-rose-50 text-rose-700 border-rose-200'
-                }`}
-              >
-                {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-                <span>{device.cloudStatus || 'ONLINE'}</span>
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100">
-              <div>
-                <span className="text-slate-400 block text-[10px] uppercase font-semibold">Primary Function</span>
-                <span className={`inline-block mt-0.5 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${meta.badgeClass}`}>
-                  {meta.label}
-                </span>
+              {/* Right: State Pill (OPEN / CLOSED / ON / OFF) */}
+              <div className="shrink-0 flex items-center gap-2">
+                {isValve ? (
+                  <span
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-2xs ${
+                      isOpen
+                        ? 'bg-emerald-600 text-white animate-pulse-subtle'
+                        : isClosed
+                        ? 'bg-slate-100 text-slate-700 border border-slate-200'
+                        : 'bg-amber-100 text-amber-800 border border-amber-200'
+                    }`}
+                  >
+                    {isOpen ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+                        OPEN
+                      </>
+                    ) : isClosed ? (
+                      <>
+                        <XCircle className="w-3.5 h-3.5 text-slate-500" />
+                        CLOSED
+                      </>
+                    ) : (
+                      <>
+                        <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
+                        UNKNOWN
+                      </>
+                    )}
+                  </span>
+                ) : isAppliance ? (
+                  <span
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-2xs ${
+                      isOpen
+                        ? 'bg-[#00665E] text-white animate-pulse-subtle'
+                        : isClosed
+                        ? 'bg-slate-100 text-slate-700 border border-slate-200'
+                        : 'bg-amber-100 text-amber-800 border border-amber-200'
+                    }`}
+                  >
+                    {isOpen ? (
+                      <>
+                        <Zap className="w-3.5 h-3.5 text-yellow-300 fill-yellow-300" />
+                        ON
+                      </>
+                    ) : isClosed ? (
+                      <>
+                        <Power className="w-3.5 h-3.5 text-slate-500" />
+                        OFF
+                      </>
+                    ) : (
+                      <>
+                        <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
+                        UNKNOWN
+                      </>
+                    )}
+                  </span>
+                ) : (
+                  <span
+                    className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl text-xs font-semibold border ${
+                      isOnline
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-rose-50 text-rose-700 border-rose-200'
+                    }`}
+                  >
+                    {isOnline ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+                    <span>{device.cloudStatus || 'ONLINE'}</span>
+                  </span>
+                )}
               </div>
-
-              <div>
-                <span className="text-slate-400 block text-[10px] uppercase font-semibold">FailSafe State</span>
-                <span className="font-medium text-slate-700 flex items-center space-x-1 mt-0.5">
-                  {device.failSafeStatus === 'NORMAL' || !device.failSafeStatus ? (
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  ) : (
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-                  )}
-                  <span>{device.failSafeStatus || 'NORMAL'}</span>
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-50">
-              <span className="flex items-center space-x-1">
-                <Clock className="w-3 h-3 text-slate-400" />
-                <span>Last Activity:</span>
-              </span>
-              <span className="font-mono font-medium text-slate-700">
-                {device.formattedHeartbeatAt || 'Active'}
-              </span>
             </div>
           </div>
         );

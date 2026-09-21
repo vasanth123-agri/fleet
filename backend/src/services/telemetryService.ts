@@ -1,25 +1,70 @@
 import prisma from '../config/db.js';
+import { Prisma } from '@prisma/client';
 import { LatestReadingDTO, EnvironmentalHistoryPoint } from '../types/index.js';
 import { formatIST, formatShortIST } from '../utils/timezone.js';
 import { calculateReadingStatus } from '../utils/status.js';
 
 export async function getLatestReading(farmId?: string, userId?: number): Promise<LatestReadingDTO | null> {
-  const where: any = {};
-  if (farmId) where.farmId = farmId;
-  if (userId) where.userId = userId;
-
   if (!farmId && !userId) return null;
 
-  const reading = await prisma.environmentalReading.findFirst({
-    where,
-    orderBy: { timestamp: 'desc' },
-  });
+  const targetFilter = farmId
+    ? Prisma.sql`"farmId" = ${farmId}`
+    : Prisma.sql`"userId" = ${userId}`;
 
+  const readings = await prisma.$queryRaw<any[]>`
+    SELECT 
+      COALESCE(r_latest.id, r_valid.id) as id,
+      r_latest.timestamp as timestamp,
+      COALESCE(r_latest.temperature, r_valid.temperature) as temperature,
+      COALESCE(r_latest.humidity, r_valid.humidity) as humidity,
+      COALESCE(r_latest."windSpeed", r_valid."windSpeed") as "windSpeed",
+      COALESCE(r_latest."directRadiation", r_valid."directRadiation") as "directRadiation",
+      COALESCE(r_latest.par, r_valid.par) as par,
+      COALESCE(r_latest.vpd, r_valid.vpd) as vpd,
+      COALESCE(r_latest.evapotranspiration, r_valid.evapotranspiration) as evapotranspiration,
+      COALESCE(r_latest.gdd, r_valid.gdd) as gdd,
+      COALESCE(r_latest.co2, r_valid.co2) as co2,
+      COALESCE(r_latest."soilTemperature", r_valid."soilTemperature") as "soilTemperature",
+      COALESCE(r_latest."soilMoisture", r_valid."soilMoisture") as "soilMoisture",
+      COALESCE(NULLIF(r_latest."soilElectroConductivity", 0), r_valid."soilElectroConductivity", r_latest."soilElectroConductivity") as "soilElectroConductivity",
+      COALESCE(r_latest.n_sensor, r_valid.n_sensor) as "soilNitrogen",
+      COALESCE(r_latest.p_sensor, r_valid.p_sensor) as "soilPhosphorus",
+      COALESCE(r_latest.k_sensor, r_valid.k_sensor) as "soilPotassium",
+      COALESCE(r_latest.ph, r_valid.ph) as "phMaster",
+      COALESCE(r_latest."phSlave", r_valid."phSlave") as "phSlave",
+      COALESCE(r_latest.tdsv, r_valid.tdsv) as tdsv,
+      COALESCE(r_latest.soilv, r_valid.soilv) as soilv,
+      COALESCE(r_latest.battery_percentage, r_battery.battery_percentage) as "batteryPercentage",
+      COALESCE(r_latest.battery_voltage, r_battery.battery_voltage) as "batteryVoltage",
+      COALESCE(r_latest.battery_current, r_battery.battery_current) as "batteryCurrent",
+      COALESCE(r_latest.battery_charging_status, r_battery.battery_charging_status) as "batteryChargingStatus",
+      COALESCE(r_latest.is_charging, r_battery.is_charging) as "isCharging"
+    FROM (
+      SELECT * FROM "EnvironmentalReading"
+      WHERE ${targetFilter}
+      ORDER BY timestamp DESC
+      LIMIT 1
+    ) r_latest
+    LEFT JOIN LATERAL (
+      SELECT * FROM "EnvironmentalReading"
+      WHERE ${targetFilter} AND (temperature IS NOT NULL OR "soilMoisture" IS NOT NULL)
+      ORDER BY timestamp DESC
+      LIMIT 1
+    ) r_valid ON true
+    LEFT JOIN LATERAL (
+      SELECT * FROM "EnvironmentalReading"
+      WHERE ${targetFilter} AND (battery_percentage IS NOT NULL OR battery_voltage IS NOT NULL)
+      ORDER BY timestamp DESC
+      LIMIT 1
+    ) r_battery ON true;
+  `.catch(() => []);
+
+  const reading = readings[0];
   if (!reading) return null;
 
   return {
     id: reading.id,
-    timestamp: reading.timestamp.toISOString(),
+    timestamp: reading.timestamp ? new Date(reading.timestamp).toISOString() : '',
     formattedTimestamp: formatIST(reading.timestamp) || '',
     temperature: reading.temperature,
     humidity: reading.humidity,
@@ -74,7 +119,7 @@ export async function getEnvironmentalHistory(
     }
   }
 
-  // Optimized indexed query on farmId and timestamp
+  // Indexed query on farmId and timestamp
   const readings = await prisma.environmentalReading.findMany({
     where: {
       farmId,
@@ -132,13 +177,11 @@ export async function getEnvironmentalHistory(
     isCharging: r.isCharging,
   });
 
-  // Downsample if dataset is large (e.g. > 300 points) to guarantee fast rendering
   const maxPoints = 300;
   if (readings.length <= maxPoints) {
     return readings.map(mapReading);
   }
 
-  // Downsample step
   const step = Math.ceil(readings.length / maxPoints);
   const sampled: EnvironmentalHistoryPoint[] = [];
 

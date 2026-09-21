@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   ShieldCheck,
   Radio,
   ChevronRight,
-  Globe,
   Users,
 } from 'lucide-react';
 import { CustomerListPage } from './pages/CustomerListPage';
@@ -14,29 +13,8 @@ export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'list' | 'customer' | 'farm'>('list');
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState<string>('');
 
-  // Clock in IST
-  useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      const formatted = new Intl.DateTimeFormat('en-IN', {
-        timeZone: 'Asia/Kolkata',
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true,
-      }).format(now);
-      setCurrentTime(formatted);
-    };
-
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
-  }, []);
+ 
 
   const handleSelectCustomer = (customerId: number) => {
     setSelectedCustomerId(customerId);
@@ -75,23 +53,16 @@ export const App: React.FC = () => {
             <div>
               <div className="flex items-center space-x-2">
                 <span className="text-base font-black text-slate-900 tracking-tight">
-                  AGRI<span className="text-[#00665E] font-extrabold">INVERSE</span>
+                  AGRI<span className="text-[#00665E] font-extrabold">-INVERSE</span>
                 </span>
-                <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest rounded bg-emerald-50 text-[#00665E] border border-emerald-200">
-                  Fleet
-                </span>
+              
               </div>
-              <span className="text-[11px] text-slate-500 block font-medium">
-                Customer & Farm Telemetry Monitoring
-              </span>
+              
             </div>
           </div>
 
-          {/* Live IST Clock */}
-          <div className="flex items-center space-x-2 text-xs font-mono text-slate-700 bg-slate-100 px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
-            <Globe className="w-3.5 h-3.5 text-[#00665E]" />
-            <span>{currentTime} IST</span>
-          </div>
+         
+        
         </div>
       </header>
 

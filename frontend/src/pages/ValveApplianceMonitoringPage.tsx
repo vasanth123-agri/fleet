@@ -8,26 +8,19 @@ import {
   Power,
   Wifi,
   WifiOff,
-  AlertTriangle,
-  Clock,
   Radio,
   ExternalLink,
   ChevronRight,
   ChevronUp,
   ChevronDown,
-  Thermometer,
-  Droplets,
-  BatteryCharging,
-  Gauge,
-  Cpu,
   Layers,
+  Cpu,
+  AlertTriangle,
   CheckCircle2,
   XCircle,
   HelpCircle,
-  Sparkles,
   Table as TableIcon,
   LayoutGrid,
-  Eye,
   X,
   Copy,
   Check,
@@ -551,9 +544,8 @@ export const ValveApplianceMonitoringPage: React.FC<ValveApplianceMonitoringPage
                   <th className="py-3.5 px-4">Customer</th>
                   <th className="py-3.5 px-4">Farm & Crop</th>
                   <th className="py-3.5 px-4">Controller / Node</th>
-                  <th className="py-3.5 px-4">Valves Physical State</th>
-                  <th className="py-3.5 px-4">Appliances / Pumps</th>
-                  <th className="py-3.5 px-4">Latest Sensor Reading</th>
+                  <th className="py-3.5 px-4">Valves (OPEN / CLOSED)</th>
+                  <th className="py-3.5 px-4">Appliances (ON / OFF)</th>
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
@@ -640,11 +632,6 @@ export const ValveApplianceMonitoringPage: React.FC<ValveApplianceMonitoringPage
                               {row.device.deviceCategory}
                             </span>
                           )}
-                          {row.device.formattedHeartbeatAt && (
-                            <div className="text-[10px] text-slate-400 mt-0.5">
-                              Heartbeat: {row.device.formattedHeartbeatAt}
-                            </div>
-                          )}
                         </div>
                       </td>
 
@@ -653,7 +640,7 @@ export const ValveApplianceMonitoringPage: React.FC<ValveApplianceMonitoringPage
                         {row.device.valves.length === 0 ? (
                           <span className="text-slate-400 text-[11px] italic">No valve on node</span>
                         ) : (
-                          <div className="space-y-2">
+                          <div className="space-y-1.5">
                             {row.device.valves.map((v: ValveStatusDTO, vIdx: number) => {
                               const isOpen = v.status === 'OPEN';
                               const isClosed = v.status === 'CLOSED';
@@ -661,53 +648,41 @@ export const ValveApplianceMonitoringPage: React.FC<ValveApplianceMonitoringPage
                               return (
                                 <div
                                   key={vIdx}
-                                  className={`p-2 rounded-xl border transition-all ${
+                                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
                                     isOpen
-                                      ? 'bg-emerald-900 text-white border-emerald-950 shadow-xs'
+                                      ? 'bg-emerald-50 text-emerald-950 border-emerald-300 shadow-2xs'
                                       : isClosed
                                       ? 'bg-slate-50 text-slate-800 border-slate-200'
                                       : 'bg-amber-50 text-amber-900 border-amber-200'
                                   }`}
                                 >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="font-bold text-[11px]">{v.displayName}</span>
-                                    <span
-                                      className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase flex items-center gap-1 ${
-                                        isOpen
-                                          ? 'bg-emerald-500 text-white animate-pulse'
-                                          : isClosed
-                                          ? 'bg-slate-200 text-slate-700'
-                                          : 'bg-amber-200 text-amber-900'
-                                      }`}
-                                    >
-                                      {isOpen ? (
-                                        <>
-                                          <CheckCircle2 className="w-3 h-3 text-white" />
-                                          OPEN
-                                        </>
-                                      ) : isClosed ? (
-                                        <>
-                                          <XCircle className="w-3 h-3 text-slate-500" />
-                                          CLOSED
-                                        </>
-                                      ) : (
-                                        <>
-                                          <HelpCircle className="w-3 h-3 text-amber-700" />
-                                          UNKNOWN
-                                        </>
-                                      )}
-                                    </span>
-                                  </div>
-                                  <div
-                                    className={`text-[10px] mt-1 ${
-                                      isOpen ? 'text-emerald-200' : 'text-slate-500'
+                                  <span className="font-bold text-xs">{v.displayName}</span>
+                                  <span
+                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${
+                                      isOpen
+                                        ? 'bg-emerald-600 text-white animate-pulse-subtle'
+                                        : isClosed
+                                        ? 'bg-slate-200 text-slate-700'
+                                        : 'bg-amber-200 text-amber-900'
                                     }`}
                                   >
-                                    Topic: <code className="font-mono">{v.statusTopic}</code>
-                                    {v.formattedLastAckAt && (
-                                      <span> &bull; ACK: {v.formattedLastAckAt}</span>
+                                    {isOpen ? (
+                                      <>
+                                        <CheckCircle2 className="w-3 h-3 text-white" />
+                                        OPEN
+                                      </>
+                                    ) : isClosed ? (
+                                      <>
+                                        <XCircle className="w-3 h-3 text-slate-500" />
+                                        CLOSED
+                                      </>
+                                    ) : (
+                                      <>
+                                        <HelpCircle className="w-3 h-3 text-amber-700" />
+                                        UNKNOWN
+                                      </>
                                     )}
-                                  </div>
+                                  </span>
                                 </div>
                               );
                             })}
@@ -720,7 +695,7 @@ export const ValveApplianceMonitoringPage: React.FC<ValveApplianceMonitoringPage
                         {row.device.appliances.length === 0 ? (
                           <span className="text-slate-400 text-[11px] italic">No appliance on node</span>
                         ) : (
-                          <div className="space-y-2">
+                          <div className="space-y-1.5">
                             {row.device.appliances.map((a: ApplianceStatusDTO, aIdx: number) => {
                               const isOn = a.status === 'ON';
                               const isOff = a.status === 'OFF';
@@ -728,137 +703,50 @@ export const ValveApplianceMonitoringPage: React.FC<ValveApplianceMonitoringPage
                               return (
                                 <div
                                   key={aIdx}
-                                  className={`p-2 rounded-xl border transition-all ${
+                                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-all ${
                                     isOn
-                                      ? 'bg-gradient-to-r from-[#004D47] to-[#00665E] text-white border-teal-900 shadow-xs'
+                                      ? 'bg-teal-50 text-teal-950 border-teal-300 shadow-2xs'
                                       : isOff
                                       ? 'bg-slate-50 text-slate-800 border-slate-200'
                                       : 'bg-amber-50 text-amber-900 border-amber-200'
                                   }`}
                                 >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center space-x-1.5">
-                                      <span className="font-bold text-[11px]">{a.deviceName}</span>
-                                      <span
-                                        className={`text-[9px] uppercase font-bold px-1 rounded ${
-                                          isOn ? 'bg-teal-800 text-emerald-200' : 'bg-slate-200 text-slate-600'
-                                        }`}
-                                      >
-                                        {a.deviceCategory}
-                                      </span>
-                                    </div>
-                                    <span
-                                      className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase flex items-center gap-1 ${
-                                        isOn
-                                          ? 'bg-emerald-400 text-emerald-950 animate-pulse'
-                                          : isOff
-                                          ? 'bg-slate-200 text-slate-700'
-                                          : 'bg-amber-200 text-amber-900'
-                                      }`}
-                                    >
-                                      {isOn ? (
-                                        <>
-                                          <Zap className="w-3 h-3 text-emerald-950 fill-emerald-950" />
-                                          ON
-                                        </>
-                                      ) : isOff ? (
-                                        <>
-                                          <Power className="w-3 h-3 text-slate-500" />
-                                          OFF
-                                        </>
-                                      ) : (
-                                        <>
-                                          <HelpCircle className="w-3 h-3 text-amber-700" />
-                                          UNKNOWN
-                                        </>
-                                      )}
+                                  <div className="flex items-center space-x-1.5 min-w-0">
+                                    <span className="font-bold text-xs truncate">{a.deviceName}</span>
+                                    <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-600 shrink-0">
+                                      {a.deviceCategory}
                                     </span>
                                   </div>
-                                  <div
-                                    className={`text-[10px] mt-1 ${
-                                      isOn ? 'text-teal-200' : 'text-slate-500'
+                                  <span
+                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0 ${
+                                      isOn
+                                        ? 'bg-[#00665E] text-white animate-pulse-subtle'
+                                        : isOff
+                                        ? 'bg-slate-200 text-slate-700'
+                                        : 'bg-amber-200 text-amber-900'
                                     }`}
                                   >
-                                    Topic: <code className="font-mono">{a.statusTopic}</code>
-                                    {a.formattedLastAckAt && (
-                                      <span> &bull; ACK: {a.formattedLastAckAt}</span>
+                                    {isOn ? (
+                                      <>
+                                        <Zap className="w-3 h-3 text-yellow-300 fill-yellow-300" />
+                                        ON
+                                      </>
+                                    ) : isOff ? (
+                                      <>
+                                        <Power className="w-3 h-3 text-slate-500" />
+                                        OFF
+                                      </>
+                                    ) : (
+                                      <>
+                                        <HelpCircle className="w-3 h-3 text-amber-700" />
+                                        UNKNOWN
+                                      </>
                                     )}
-                                  </div>
+                                  </span>
                                 </div>
                               );
                             })}
                           </div>
-                        )}
-                      </td>
-
-                      {/* Latest Sensor Reading */}
-                      <td className="py-4 px-4 align-top">
-                        {row.device.lastReading ? (
-                          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 space-y-1.5 min-w-[210px]">
-                            <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500">
-                              <span className="flex items-center gap-1">
-                                <Activity className="w-3 h-3 text-[#00665E]" />
-                                {row.device.lastReading.formattedTimestamp || 'Reading'}
-                              </span>
-                              <button
-                                onClick={() => setSelectedReadingModal(row.device.lastReading)}
-                                className="text-[#00665E] hover:underline flex items-center gap-0.5"
-                                title="Inspect Full Telemetry JSON"
-                              >
-                                <Eye className="w-3 h-3" />
-                                <span>Inspect</span>
-                              </button>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                              <div className="p-1 rounded bg-orange-50/70 border border-orange-100 flex items-center space-x-1">
-                                <Thermometer className="w-3 h-3 text-orange-600 shrink-0" />
-                                <span>
-                                  {row.device.lastReading.temperature != null
-                                    ? `${row.device.lastReading.temperature}°C`
-                                    : '--'}
-                                </span>
-                              </div>
-                              <div className="p-1 rounded bg-blue-50/70 border border-blue-100 flex items-center space-x-1">
-                                <Droplets className="w-3 h-3 text-blue-600 shrink-0" />
-                                <span>
-                                  {row.device.lastReading.humidity != null
-                                    ? `${row.device.lastReading.humidity}%`
-                                    : '--'}
-                                </span>
-                              </div>
-                              <div className="p-1 rounded bg-emerald-50/70 border border-emerald-100 flex items-center space-x-1">
-                                <Droplets className="w-3 h-3 text-emerald-600 shrink-0" />
-                                <span>
-                                  Moi: {row.device.lastReading.soilMoisture != null
-                                    ? `${row.device.lastReading.soilMoisture}%`
-                                    : '--'}
-                                </span>
-                              </div>
-                              <div className="p-1 rounded bg-indigo-50/70 border border-indigo-100 flex items-center space-x-1">
-                                <Gauge className="w-3 h-3 text-indigo-600 shrink-0" />
-                                <span>
-                                  pH: {row.device.lastReading.phMaster != null
-                                    ? row.device.lastReading.phMaster
-                                    : '--'}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Battery */}
-                            {row.device.lastReading.batteryPercentage != null && (
-                              <div className="text-[10px] text-slate-600 flex items-center gap-1 pt-0.5 border-t border-slate-200/50">
-                                <BatteryCharging className="w-3 h-3 text-emerald-600" />
-                                <span>
-                                  Battery: {row.device.lastReading.batteryPercentage}%
-                                  {row.device.lastReading.batteryVoltage != null &&
-                                    ` (${row.device.lastReading.batteryVoltage}V)`}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 text-[11px] italic">No telemetry recorded</span>
                         )}
                       </td>
 
@@ -1268,31 +1156,11 @@ const DeviceItemCard: React.FC<DeviceItemCardProps> = ({ device }) => {
                 {device.deviceCategory}
               </span>
             </div>
-            <div className="text-[11px] text-slate-500 mt-0.5 flex items-center space-x-3">
-              {device.formattedHeartbeatAt && (
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-slate-400" />
-                  Heartbeat: {device.formattedHeartbeatAt}
-                </span>
-              )}
-              {device.formattedLastAckAt && (
-                <span className="flex items-center gap-1 text-slate-600">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                  Last ACK: {device.formattedLastAckAt}
-                </span>
-              )}
-            </div>
           </div>
         </div>
 
         {/* Cloud Status Badge */}
         <div className="flex items-center space-x-2 self-start sm:self-auto">
-          {device.failSafeStatus === 'FAILSAFE' && (
-            <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" />
-              FAILSAFE: {device.failSafeReason || 'LORA_ERR'}
-            </span>
-          )}
           <span
             className={`px-2.5 py-1 text-xs font-bold rounded-lg border flex items-center gap-1.5 ${
               isOnline
@@ -1344,13 +1212,6 @@ const DeviceItemCard: React.FC<DeviceItemCardProps> = ({ device }) => {
           </div>
         </div>
       )}
-
-      {/* Last Sensor Reading Panel */}
-      {device.lastReading && (
-        <div className="pt-2 border-t border-slate-200">
-          <SensorReadingStrip reading={device.lastReading} />
-        </div>
-      )}
     </div>
   );
 };
@@ -1368,31 +1229,15 @@ const ValveCard: React.FC<ValveCardProps> = ({ valve }) => {
     <div
       className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 transition-all ${
         isOpen
-          ? 'bg-emerald-900 text-white border-emerald-950 shadow-sm'
+          ? 'bg-emerald-50 text-emerald-950 border-emerald-300 shadow-2xs'
           : isClosed
           ? 'bg-white text-slate-800 border-slate-200 shadow-2xs'
           : 'bg-amber-50 text-amber-900 border-amber-200'
       }`}
     >
-      <div className="space-y-1">
-        <div className="flex items-center space-x-2">
-          <span className="text-xs font-bold">{valve.displayName}</span>
-          {valve.isSessionActive && (
-            <span
-              className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                isOpen ? 'bg-emerald-800 text-emerald-200' : 'bg-emerald-100 text-emerald-800'
-              }`}
-            >
-              Scheduled Active ({valve.activeSessionDurationMinutes}m)
-            </span>
-          )}
-        </div>
-        <div className={`text-[11px] flex items-center flex-wrap gap-x-2 ${isOpen ? 'text-emerald-200' : 'text-slate-500'}`}>
-          <span>Topic: <code className="font-mono">{valve.statusTopic}</code></span>
-          {valve.formattedLastAckAt && (
-            <span>&bull; Confirmed: {valve.formattedLastAckAt}</span>
-          )}
-        </div>
+      <div className="flex items-center space-x-2">
+        <Radio className={`w-4 h-4 ${isOpen ? 'text-emerald-600' : 'text-slate-400'}`} />
+        <span className="text-sm font-bold text-slate-900">{valve.displayName}</span>
       </div>
 
       {/* State Badge */}
@@ -1400,10 +1245,10 @@ const ValveCard: React.FC<ValveCardProps> = ({ valve }) => {
         <span
           className={`px-3 py-1.5 rounded-xl text-xs font-black tracking-wider uppercase flex items-center gap-1.5 shadow-2xs ${
             isOpen
-              ? 'bg-emerald-500 text-white animate-pulse'
+              ? 'bg-emerald-600 text-white animate-pulse-subtle'
               : isClosed
-              ? 'bg-slate-200 text-slate-700'
-              : 'bg-amber-200 text-amber-900'
+              ? 'bg-slate-100 text-slate-700 border border-slate-200'
+              : 'bg-amber-100 text-amber-800 border border-amber-200'
           }`}
         >
           {isOpen ? (
@@ -1418,7 +1263,7 @@ const ValveCard: React.FC<ValveCardProps> = ({ valve }) => {
             </>
           ) : (
             <>
-              <HelpCircle className="w-4 h-4 text-amber-700" />
+              <HelpCircle className="w-4 h-4 text-amber-600" />
               UNKNOWN
             </>
           )}
@@ -1437,49 +1282,25 @@ const ApplianceCard: React.FC<ApplianceCardProps> = ({ appliance }) => {
   const isOn = appliance.status === 'ON';
   const isOff = appliance.status === 'OFF';
 
-  const formatSeconds = (sec: number | null | undefined) => {
-    if (sec == null) return null;
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    if (m >= 60) {
-      const h = Math.floor(m / 60);
-      return `${h}h ${m % 60}m`;
-    }
-    return `${m}m ${s}s`;
-  };
-
   return (
     <div
       className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 transition-all ${
         isOn
-          ? 'bg-gradient-to-r from-[#004D47] to-[#00665E] text-white border-teal-900 shadow-sm'
+          ? 'bg-teal-50 text-teal-950 border-teal-300 shadow-2xs'
           : isOff
           ? 'bg-white text-slate-800 border-slate-200 shadow-2xs'
           : 'bg-amber-50 text-amber-900 border-amber-200'
       }`}
     >
-      <div className="space-y-1">
-        <div className="flex items-center space-x-2">
-          <span className="text-xs font-bold">{appliance.deviceName}</span>
-          <span
-            className={`text-[10px] uppercase font-bold px-1.5 py-0.2 rounded ${
-              isOn ? 'bg-teal-800 text-emerald-200' : 'bg-slate-100 text-slate-600'
-            }`}
-          >
+      <div className="flex items-center space-x-2.5 min-w-0">
+        <Power className={`w-4 h-4 shrink-0 ${isOn ? 'text-teal-700' : 'text-slate-400'}`} />
+        <div className="min-w-0">
+          <span className="text-sm font-bold text-slate-900 truncate block">
+            {appliance.deviceName}
+          </span>
+          <span className="text-[10px] uppercase font-bold text-slate-500">
             {appliance.deviceCategory}
           </span>
-          {appliance.currentRuntimeSeconds != null && isOn && (
-            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-yellow-400 text-yellow-950 flex items-center gap-0.5">
-              <Clock className="w-2.5 h-2.5" />
-              Running: {formatSeconds(appliance.currentRuntimeSeconds)}
-            </span>
-          )}
-        </div>
-        <div className={`text-[11px] flex items-center flex-wrap gap-x-2 ${isOn ? 'text-teal-200' : 'text-slate-500'}`}>
-          <span>Topic: <code className="font-mono">{appliance.statusTopic}</code></span>
-          {appliance.formattedLastAckAt && (
-            <span>&bull; Confirmed: {appliance.formattedLastAckAt}</span>
-          )}
         </div>
       </div>
 
@@ -1488,15 +1309,15 @@ const ApplianceCard: React.FC<ApplianceCardProps> = ({ appliance }) => {
         <span
           className={`px-3 py-1.5 rounded-xl text-xs font-black tracking-wider uppercase flex items-center gap-1.5 shadow-2xs ${
             isOn
-              ? 'bg-emerald-400 text-emerald-950 font-black animate-pulse'
+              ? 'bg-[#00665E] text-white animate-pulse-subtle'
               : isOff
-              ? 'bg-slate-200 text-slate-700'
-              : 'bg-amber-200 text-amber-900'
+              ? 'bg-slate-100 text-slate-700 border border-slate-200'
+              : 'bg-amber-100 text-amber-800 border border-amber-200'
           }`}
         >
           {isOn ? (
             <>
-              <Zap className="w-4 h-4 text-emerald-950 fill-emerald-950" />
+              <Zap className="w-4 h-4 text-yellow-300 fill-yellow-300" />
               ON
             </>
           ) : isOff ? (
@@ -1506,7 +1327,7 @@ const ApplianceCard: React.FC<ApplianceCardProps> = ({ appliance }) => {
             </>
           ) : (
             <>
-              <HelpCircle className="w-4 h-4 text-amber-700" />
+              <HelpCircle className="w-4 h-4 text-amber-600" />
               UNKNOWN
             </>
           )}
@@ -1516,123 +1337,3 @@ const ApplianceCard: React.FC<ApplianceCardProps> = ({ appliance }) => {
   );
 };
 
-// ── Sensor Reading Strip Component ────────────────────────────────────
-interface SensorReadingStripProps {
-  reading: {
-    timestamp: string | null;
-    formattedTimestamp: string | null;
-    temperature: number | null;
-    humidity: number | null;
-    soilMoisture: number | null;
-    soilTemperature: number | null;
-    soilElectroConductivity: number | null;
-    soilNitrogen: number | null;
-    soilPhosphorus: number | null;
-    soilPotassium: number | null;
-    phMaster: number | null;
-    vpd: number | null;
-    co2: number | null;
-    windSpeed: number | null;
-    par: number | null;
-    directRadiation: number | null;
-    batteryPercentage: number | null;
-    batteryVoltage: number | null;
-  };
-}
-
-const SensorReadingStrip: React.FC<SensorReadingStripProps> = ({ reading }) => {
-  return (
-    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2">
-      <div className="flex items-center justify-between text-xs">
-        <span className="font-bold text-slate-700 flex items-center gap-1.5">
-          <Activity className="w-3.5 h-3.5 text-[#00665E]" />
-          Last Sensor Reading
-        </span>
-        {reading.formattedTimestamp && (
-          <span className="text-[11px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-            {reading.formattedTimestamp}
-          </span>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 text-xs">
-        <div className="p-2 rounded-lg bg-orange-50/70 border border-orange-100 flex items-center space-x-2">
-          <Thermometer className="w-4 h-4 text-orange-600 shrink-0" />
-          <div>
-            <div className="text-[10px] text-slate-500 font-medium">Temperature</div>
-            <div className="font-bold text-slate-900">
-              {reading.temperature != null ? `${reading.temperature} °C` : '--'}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-2 rounded-lg bg-blue-50/70 border border-blue-100 flex items-center space-x-2">
-          <Droplets className="w-4 h-4 text-blue-600 shrink-0" />
-          <div>
-            <div className="text-[10px] text-slate-500 font-medium">Humidity</div>
-            <div className="font-bold text-slate-900">
-              {reading.humidity != null ? `${reading.humidity} %` : '--'}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-2 rounded-lg bg-emerald-50/70 border border-emerald-100 flex items-center space-x-2">
-          <Droplets className="w-4 h-4 text-emerald-600 shrink-0" />
-          <div>
-            <div className="text-[10px] text-slate-500 font-medium">Soil Moisture</div>
-            <div className="font-bold text-slate-900">
-              {reading.soilMoisture != null ? `${reading.soilMoisture} %` : '--'}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-2 rounded-lg bg-indigo-50/70 border border-indigo-100 flex items-center space-x-2">
-          <Gauge className="w-4 h-4 text-indigo-600 shrink-0" />
-          <div>
-            <div className="text-[10px] text-slate-500 font-medium">Soil pH</div>
-            <div className="font-bold text-slate-900">
-              {reading.phMaster != null ? `${reading.phMaster}` : '--'}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-2 rounded-lg bg-teal-50/70 border border-teal-100 flex items-center space-x-2">
-          <Activity className="w-4 h-4 text-teal-600 shrink-0" />
-          <div>
-            <div className="text-[10px] text-slate-500 font-medium">Soil EC</div>
-            <div className="font-bold text-slate-900">
-              {reading.soilElectroConductivity != null
-                ? `${reading.soilElectroConductivity} mS/cm`
-                : '--'}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-2 rounded-lg bg-purple-50/70 border border-purple-100 flex items-center space-x-2">
-          <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
-          <div>
-            <div className="text-[10px] text-slate-500 font-medium">Soil N-P-K</div>
-            <div className="font-bold text-slate-900 text-[11px]">
-              {reading.soilNitrogen != null && reading.soilPhosphorus != null && reading.soilPotassium != null
-                ? `${reading.soilNitrogen}-${reading.soilPhosphorus}-${reading.soilPotassium}`
-                : '--'}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center space-x-2">
-          <BatteryCharging className="w-4 h-4 text-emerald-600 shrink-0" />
-          <div>
-            <div className="text-[10px] text-slate-500 font-medium">Battery</div>
-            <div className="font-bold text-slate-900">
-              {reading.batteryPercentage != null ? `${reading.batteryPercentage}%` : '--'}
-              {reading.batteryVoltage != null && (
-                <span className="text-[10px] text-slate-500 ml-1">({reading.batteryVoltage}V)</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
