@@ -77,7 +77,7 @@ export interface ValveApplianceStatusResponse {
 
 export const fleetApi = createApi({
   reducerPath: 'fleetApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: fetchBaseQuery({ baseUrl: import.meta.env.VITE_API_BASE_URL || '/api' }),
   keepUnusedDataFor: 300, // 5 minutes cache retention for fast navigation
   tagTypes: ['Customers', 'CustomerDetail', 'FarmTelemetry', 'Overview', 'ValvesAppliances'],
   endpoints: (builder) => ({
