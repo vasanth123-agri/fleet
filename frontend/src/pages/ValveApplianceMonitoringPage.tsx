@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   RotateCw,
   Search,
@@ -36,8 +37,8 @@ import {
 } from '../types';
 
 interface ValveApplianceMonitoringPageProps {
-  onSelectCustomer: (userId: number) => void;
-  onSelectFarm: (farmId: string) => void;
+  onSelectCustomer?: (userId: number) => void;
+  onSelectFarm?: (farmId: string) => void;
 }
 
 interface FlatDeviceRow {
@@ -58,9 +59,12 @@ interface FlatDeviceRow {
 }
 
 export const ValveApplianceMonitoringPage: React.FC<ValveApplianceMonitoringPageProps> = ({
-  onSelectCustomer,
-  onSelectFarm,
+  onSelectCustomer: propOnSelectCustomer,
+  onSelectFarm: propOnSelectFarm,
 }) => {
+  const navigate = useNavigate();
+  const onSelectCustomer = propOnSelectCustomer ?? ((userId: number) => navigate('/customers/' + userId));
+  const onSelectFarm = propOnSelectFarm ?? ((farmId: string) => navigate('/farms/' + farmId));
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'valve' | 'appliance'>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -82,10 +86,10 @@ export const ValveApplianceMonitoringPage: React.FC<ValveApplianceMonitoringPage
       search: search ? search : undefined,
       deviceCategory: selectedCategory !== 'all' ? selectedCategory : undefined,
       status: selectedStatus !== 'ALL' ? selectedStatus : undefined,
-      forceFresh: true,
     },
     {
-      pollingInterval: autoRefresh ? 15000 : 0,
+      pollingInterval: autoRefresh ? 20000 : 0,
+      refetchOnMountOrArgChange: 30,
     }
   );
 

@@ -4,7 +4,7 @@ import * as farmService from '../services/farmService.js';
 
 export async function listCustomers(req: Request, res: Response): Promise<void> {
   try {
-    const { page, limit, search, crop, status, deviceCategory, fresh } = req.query;
+    const { page, limit, search, crop, status, deviceCategory, fresh, forceFresh } = req.query;
 
     const result = await customerService.getCustomers({
       page: page ? parseInt(String(page), 10) : undefined,
@@ -13,7 +13,7 @@ export async function listCustomers(req: Request, res: Response): Promise<void> 
       crop: crop ? String(crop) : undefined,
       status: status ? String(status) : undefined,
       deviceCategory: deviceCategory ? String(deviceCategory) : undefined,
-      forceFresh: fresh === 'true',
+      forceFresh: fresh === 'true' || forceFresh === 'true',
     });
 
     res.json({
@@ -38,7 +38,7 @@ export async function getCustomer(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const forceFresh = req.query.fresh === 'true';
+    const forceFresh = req.query.fresh === 'true' || req.query.forceFresh === 'true';
     const customer = await customerService.getCustomerById(userId, forceFresh);
     if (!customer) {
       res.status(404).json({ success: false, error: 'Customer not found' });
@@ -66,7 +66,8 @@ export async function getCustomerFarms(req: Request, res: Response): Promise<voi
       return;
     }
 
-    const farms = await farmService.getFarmsByUserId(userId);
+    const forceFresh = req.query.fresh === 'true' || req.query.forceFresh === 'true';
+    const farms = await farmService.getFarmsByUserId(userId, forceFresh);
     res.json({
       success: true,
       data: farms,

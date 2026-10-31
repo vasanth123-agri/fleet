@@ -1,21 +1,27 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   Sprout,
   RefreshCw,
   AlertCircle,
 } from 'lucide-react';
-import { useGetOverviewStatsQuery, useGetCustomersQuery } from '../store/fleetApi';
+import { useGetOverviewStatsQuery, useGetCustomersQuery, usePrefetch } from '../store/fleetApi';
 import { CustomerTable } from '../components/CustomerTable';
 import { DashboardFilters } from '../components/DashboardFilters';
 
 interface CustomerListPageProps {
-  onSelectCustomer: (customerId: number) => void;
+  onSelectCustomer?: (customerId: number) => void;
 }
 
 export const CustomerListPage: React.FC<CustomerListPageProps> = ({
   onSelectCustomer,
 }) => {
+  const navigate = useNavigate();
+  const handleSelectCustomer = onSelectCustomer ?? ((customerId: number) => {
+    navigate(`/customers/${customerId}`);
+  });
+
   // Filter & Pagination State
   const [search, setSearch] = useState<string>('');
   const [debouncedSearch, setDebouncedSearch] = useState<string>('');
@@ -23,6 +29,7 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
   const [status, setStatus] = useState<string>('');
   const [deviceCategory, setDeviceCategory] = useState<string>('');
   const [page, setPage] = useState<number>(1);
+  const [manualRefresh, setManualRefresh] = useState<boolean>(false);
 
   // Debounce search input
   useEffect(() => {
@@ -33,12 +40,14 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
     return () => clearTimeout(handler);
   }, [search]);
 
-  // RTK Query hooks
+  // RTK Query hooks with 30s fresh cache retention to prevent redundant network hits on tab navigation
+  const prefetchCustomers = usePrefetch('getCustomers');
+
   const {
     data: overview,
     refetch: refetchOverview,
     isFetching: isOverviewFetching,
-  } = useGetOverviewStatsQuery();
+  } = useGetOverviewStatsQuery(manualRefresh, { refetchOnMountOrArgChange: 30 });
 
   const {
     data: customerResponse,
@@ -46,18 +55,49 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
     isFetching: isCustomersFetching,
     error: customerError,
     refetch: refetchCustomers,
-  } = useGetCustomersQuery({
-    page,
-    limit: 10,
-    search: debouncedSearch,
-    crop,
-    status,
-    deviceCategory,
-  });
+  } = useGetCustomersQuery(
+    {
+      page,
+      limit: 10,
+      search: debouncedSearch,
+      crop,
+      status,
+      deviceCategory,
+      fresh: manualRefresh || undefined,
+    },
+    { refetchOnMountOrArgChange: 30 }
+  );
 
-  const handleRefreshAll = () => {
-    refetchOverview();
-    refetchCustomers();
+  const totalPages = customerResponse?.pagination.totalPages || 1;
+
+  // Background Prefetching: proactively prefetch next and previous pages for instantaneous 0ms pagination
+  useEffect(() => {
+    if (page < totalPages) {
+      prefetchCustomers({
+        page: page + 1,
+        limit: 10,
+        search: debouncedSearch,
+        crop,
+        status,
+        deviceCategory,
+      });
+    }
+    if (page > 1) {
+      prefetchCustomers({
+        page: page - 1,
+        limit: 10,
+        search: debouncedSearch,
+        crop,
+        status,
+        deviceCategory,
+      });
+    }
+  }, [page, totalPages, debouncedSearch, crop, status, deviceCategory, prefetchCustomers]);
+
+  const handleRefreshAll = async () => {
+    setManualRefresh(true);
+    await Promise.all([refetchOverview(), refetchCustomers()]);
+    setTimeout(() => setManualRefresh(false), 2000);
   };
 
   const handleResetFilters = () => {
@@ -71,7 +111,6 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
 
   const isRefreshing = isOverviewFetching || isCustomersFetching;
   const customers = customerResponse?.data || [];
-  const totalPages = customerResponse?.pagination.totalPages || 1;
   const availableCrops = overview?.cropBreakdown.map((c) => c.crop) || [];
 
   return (
@@ -81,16 +120,14 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center space-x-2.5">
             <span>Customer Fleet Monitoring</span>
-           
           </h1>
-        
         </div>
 
         <div className="flex items-center space-x-2">
           <button
             onClick={handleRefreshAll}
             disabled={isRefreshing}
-            className="flex items-center space-x-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 transition-all shadow-xs"
+            className="flex items-center space-x-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 transition-all shadow-xs active:scale-95"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-[#00665E]' : 'text-slate-500'}`} />
             <span>{isRefreshing ? 'Syncing...' : 'Refresh'}</span>
@@ -124,46 +161,6 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
             <div className="text-2xl font-bold text-slate-900">{overview.totalFarms}</div>
             <div className="text-[11px] text-slate-500">Active cultivation plots</div>
           </div>
-
-          {/* IoT Devices Online */}
-          {/* <div className="glass-card rounded-2xl p-4 space-y-1">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <span>Hardware Nodes</span>
-              <div className="p-1.5 bg-sky-50 text-sky-700 border border-sky-100 rounded-lg">
-                <Cpu className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="text-2xl font-bold text-slate-900 flex items-baseline space-x-1.5">
-              <span>{overview.onlineDevices}</span>
-              <span className="text-xs font-normal text-slate-500">/ {overview.totalDevices} online</span>
-            </div>
-            <div className="text-[11px] text-emerald-700 font-medium">
-              {overview.totalDevices > 0
-                ? `${Math.round((overview.onlineDevices / overview.totalDevices) * 100)}% online connectivity`
-                : 'No hardware registered'}
-            </div>
-          </div> */}
-
-          {/* Live Telemetry Rate */}
-          {/* <div className="glass-card rounded-2xl p-4 space-y-1">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <span>Telemetry Status</span>
-              <div className="p-1.5 bg-purple-50 text-purple-700 border border-purple-100 rounded-lg">
-                <Activity className="w-4 h-4" />
-              </div>
-            </div>
-            <div className="flex items-baseline space-x-2">
-              <span className="text-2xl font-bold text-emerald-700">
-                {overview.statusBreakdown.live}
-              </span>
-              <span className="text-xs text-slate-500">Live transmitting</span>
-            </div>
-            <div className="flex items-center space-x-2 text-[11px] text-slate-500 font-mono">
-              <span className="text-amber-600 font-semibold">{overview.statusBreakdown.delayed} delayed</span>
-              <span>•</span>
-              <span className="text-rose-600 font-semibold">{overview.statusBreakdown.offline} offline</span>
-            </div>
-          </div> */}
         </div>
       )}
 
@@ -202,7 +199,7 @@ export const CustomerListPage: React.FC<CustomerListPageProps> = ({
       <CustomerTable
         customers={customers}
         loading={isCustomersLoading}
-        onSelectCustomer={onSelectCustomer}
+        onSelectCustomer={handleSelectCustomer}
         page={page}
         totalPages={totalPages}
         onPageChange={setPage}

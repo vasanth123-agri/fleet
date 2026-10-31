@@ -8,59 +8,74 @@ import * as telemetryService from './telemetryService.js';
 import * as batteryService from './batteryService.js';
 import * as fertigationService from './fertigationService.js';
 
-export async function getFarmsByUserId(userId: number) {
-  const farms = await prisma.farm.findMany({
-    where: { userId },
-    include: {
-      plant: true,
-      boundaries: true,
-      devices: true,
+export async function getFarmsByUserId(userId: number, forceFresh = false) {
+  const cacheKey = `user_farms:${userId}`;
+
+  return memoryCache.getOrFetch(
+    cacheKey,
+    async () => {
+      const farms = await prisma.farm.findMany({
+        where: { userId },
+        include: {
+          plant: true,
+          boundaries: true,
+          devices: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const farmIds = farms.map((f) => f.id);
+      let latestReadings: any[] = [];
+
+      if (farmIds.length > 0) {
+        try {
+          latestReadings = await prisma.$queryRaw<any[]>`
+            SELECT l."farmId", l.timestamp
+            FROM unnest(${farmIds}::text[]) AS f(id)
+            CROSS JOIN LATERAL (
+              SELECT "farmId", timestamp
+              FROM "EnvironmentalReading"
+              WHERE "farmId" = f.id
+              ORDER BY "farmId", timestamp DESC
+              LIMIT 1
+            ) l;
+          `;
+        } catch {
+          latestReadings = [];
+        }
+      }
+
+      const readingMap = new Map<string, Date>();
+      latestReadings.forEach((r) => {
+        if (r.farmId && r.timestamp) {
+          readingMap.set(r.farmId, new Date(r.timestamp));
+        }
+      });
+
+      return farms.map((farm) => {
+        const timestamp = readingMap.get(farm.id) || null;
+        const readingStatus = calculateReadingStatus(timestamp);
+
+        return {
+          farmId: farm.id,
+          name: farm.name,
+          crop: farm.plant?.plantName || null,
+          cropType: farm.boundaries.find((b) => b.cropType)?.cropType || null,
+          totalArea: farm.totalArea,
+          totalAreaAcres: farm.totalAreaAcres,
+          location: (farm.location as any) || null,
+          boundaryCount: farm.boundaries.length,
+          deviceCount: farm.devices.length,
+          latestReadingTime: timestamp ? timestamp.toISOString() : null,
+          formattedReadingTime: formatIST(timestamp),
+          readingStatus,
+        };
+      });
     },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  const farmIds = farms.map((f) => f.id);
-  let latestReadings: any[] = [];
-
-  if (farmIds.length > 0) {
-    try {
-      latestReadings = await prisma.$queryRaw<any[]>`
-        SELECT DISTINCT ON ("farmId") "farmId", timestamp
-        FROM "EnvironmentalReading"
-        WHERE "farmId" IN (${Prisma.join(farmIds)})
-        ORDER BY "farmId", timestamp DESC;
-      `;
-    } catch {
-      latestReadings = [];
-    }
-  }
-
-  const readingMap = new Map<string, Date>();
-  latestReadings.forEach((r) => {
-    if (r.farmId && r.timestamp) {
-      readingMap.set(r.farmId, new Date(r.timestamp));
-    }
-  });
-
-  return farms.map((farm) => {
-    const timestamp = readingMap.get(farm.id) || null;
-    const readingStatus = calculateReadingStatus(timestamp);
-
-    return {
-      farmId: farm.id,
-      name: farm.name,
-      crop: farm.plant?.plantName || null,
-      cropType: farm.boundaries.find((b) => b.cropType)?.cropType || null,
-      totalArea: farm.totalArea,
-      totalAreaAcres: farm.totalAreaAcres,
-      location: (farm.location as any) || null,
-      boundaryCount: farm.boundaries.length,
-      deviceCount: farm.devices.length,
-      latestReadingTime: timestamp ? timestamp.toISOString() : null,
-      formattedReadingTime: formatIST(timestamp),
-      readingStatus,
-    };
-  });
+    30,
+    forceFresh,
+    60
+  );
 }
 
 export async function getFarmById(farmId: string, forceFresh = false): Promise<FarmDetailResponse | null> {

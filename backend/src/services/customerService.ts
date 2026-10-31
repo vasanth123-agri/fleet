@@ -17,6 +17,20 @@ interface GetCustomersParams {
   forceFresh?: boolean;
 }
 
+// Helper to compute UTC boundaries for an IST calendar day
+function getISTDayUtcRange(dateObj: Date): { istStart: Date; istEnd: Date } {
+  const istFormatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const istDateStr = istFormatter.format(dateObj); // "YYYY-MM-DD"
+  const istStart = new Date(`${istDateStr}T00:00:00+05:30`);
+  const istEnd = new Date(istStart.getTime() + 24 * 60 * 60 * 1000);
+  return { istStart, istEnd };
+}
+
 export async function getCustomers(params: GetCustomersParams): Promise<{
   customers: CustomerDashboardSummary[];
   pagination: {
@@ -80,7 +94,7 @@ export async function getCustomers(params: GetCustomersParams): Promise<{
         whereClause.email = { in: emails, mode: 'insensitive' };
       }
 
-      // Step 1: Count total matching users and fetch paginated basic user records in parallel
+      // Step 1: Count total matching users and fetch paginated user records with farm relation
       const [total, users] = await Promise.all([
         prisma.user.count({ where: whereClause }),
         prisma.user.findMany({
@@ -97,18 +111,7 @@ export async function getCustomers(params: GetCustomersParams): Promise<{
             status: true,
             role: true,
             createdAt: true,
-          },
-        }),
-      ]);
-
-      const userIds = users.map((u) => u.id);
-      const userEmails = users.map((u) => u.email).filter(Boolean) as string[];
-
-      // Step 2: Parallel batch query of all relations, devices, and distinct readings in 1 concurrent round-trip
-      const [farms, fertSettingsList, pageDevices, envReadings, outdoorReadings] = await Promise.all([
-        userIds.length > 0
-          ? prisma.farm.findMany({
-              where: { userId: { in: userIds } },
+            farm: {
               select: {
                 id: true,
                 userId: true,
@@ -120,8 +123,18 @@ export async function getCustomers(params: GetCustomersParams): Promise<{
                 boundaries: { select: { id: true, name: true, cropType: true, area: true, areaAcres: true } },
                 devices: { select: { id: true } },
               },
-            })
-          : Promise.resolve([]),
+            },
+          },
+        }),
+      ]);
+
+      const userIds = users.map((u) => u.id);
+      const userEmails = users.map((u) => u.email).filter(Boolean) as string[];
+      const allFarms = users.flatMap((u) => u.farm || []);
+      const allFarmIds = allFarms.map((f) => f.id);
+
+      // Step 2: Parallel batch query of all relations, devices, and distinct readings using ultra-fast LATERAL index scans
+      const [fertSettingsList, pageDevices, farmLatestReadings, envReadings, outdoorReadings] = await Promise.all([
         userIds.length > 0
           ? prisma.fertigationSettings.findMany({
               where: { userId: { in: userIds } },
@@ -153,22 +166,53 @@ export async function getCustomers(params: GetCustomersParams): Promise<{
               },
             })
           : Promise.resolve([]),
+        allFarmIds.length > 0
+          ? prisma.$queryRaw<any[]>`
+              SELECT l.*
+              FROM unnest(${allFarmIds}::text[]) AS f(id)
+              CROSS JOIN LATERAL (
+                SELECT 
+                  id, timestamp, "userId", "farmId", "boundaryId",
+                  temperature, humidity, "windSpeed", "directRadiation", par, vpd, evapotranspiration, gdd, co2,
+                  "soilTemperature", "soilMoisture", "soilElectroConductivity",
+                  n_sensor as "soilNitrogen", p_sensor as "soilPhosphorus", k_sensor as "soilPotassium",
+                  ph as "phMaster", "phSlave",
+                  battery_percentage as "batteryPercentage",
+                  battery_voltage as "batteryVoltage",
+                  battery_current as "batteryCurrent",
+                  battery_charging_status as "batteryChargingStatus",
+                  is_charging as "isCharging"
+                FROM "EnvironmentalReading"
+                WHERE "farmId" = f.id
+                ORDER BY "farmId", timestamp DESC
+                LIMIT 1
+              ) l;
+            `.catch((err) => {
+              console.error('Error in batch farmLatestReadings query:', err);
+              return [];
+            })
+          : Promise.resolve([]),
         userIds.length > 0
           ? prisma.$queryRaw<any[]>`
-              SELECT DISTINCT ON ("userId")
-                id, timestamp, "userId", "farmId", "boundaryId",
-                temperature, humidity, "windSpeed", "directRadiation", par, vpd, evapotranspiration, gdd, co2,
-                "soilTemperature", "soilMoisture", "soilElectroConductivity",
-                n_sensor as "soilNitrogen", p_sensor as "soilPhosphorus", k_sensor as "soilPotassium",
-                ph as "phMaster", "phSlave",
-                battery_percentage as "batteryPercentage",
-                battery_voltage as "batteryVoltage",
-                battery_current as "batteryCurrent",
-                battery_charging_status as "batteryChargingStatus",
-                is_charging as "isCharging"
-              FROM "EnvironmentalReading"
-              WHERE "userId" IN (${Prisma.join(userIds)})
-              ORDER BY "userId", timestamp DESC;
+              SELECT l.*
+              FROM unnest(${userIds}::int[]) AS u(id)
+              CROSS JOIN LATERAL (
+                SELECT 
+                  id, timestamp, "userId", "farmId", "boundaryId",
+                  temperature, humidity, "windSpeed", "directRadiation", par, vpd, evapotranspiration, gdd, co2,
+                  "soilTemperature", "soilMoisture", "soilElectroConductivity",
+                  n_sensor as "soilNitrogen", p_sensor as "soilPhosphorus", k_sensor as "soilPotassium",
+                  ph as "phMaster", "phSlave",
+                  battery_percentage as "batteryPercentage",
+                  battery_voltage as "batteryVoltage",
+                  battery_current as "batteryCurrent",
+                  battery_charging_status as "batteryChargingStatus",
+                  is_charging as "isCharging"
+                FROM "EnvironmentalReading"
+                WHERE "userId" = u.id
+                ORDER BY "userId", timestamp DESC
+                LIMIT 1
+              ) l;
             `.catch((err) => {
               console.error('Error in batch envReadings query:', err);
               return [];
@@ -176,14 +220,19 @@ export async function getCustomers(params: GetCustomersParams): Promise<{
           : Promise.resolve([]),
         userIds.length > 0
           ? prisma.$queryRaw<any[]>`
-              SELECT DISTINCT ON (user_id)
-                id, timestamp, user_id as "userId", farm_id as "farmId", device_id as "deviceId",
-                ready, safe, alert, failsafe, e_stop, cloud_online,
-                m1_ec, m2_ec, m1_ph, m2_ph, water_level as "waterLevel",
-                n1_pct, n2_pct, ph_up_pct, ph_dn_pct, t5_pct
-              FROM outdoorreading
-              WHERE user_id IN (${Prisma.join(userIds)})
-              ORDER BY user_id, timestamp DESC;
+              SELECT l.*
+              FROM unnest(${userIds}::int[]) AS u(id)
+              CROSS JOIN LATERAL (
+                SELECT 
+                  id, timestamp, user_id as "userId", farm_id as "farmId", device_id as "deviceId",
+                  ready, safe, alert, failsafe, e_stop, cloud_online,
+                  m1_ec, m2_ec, m1_ph, m2_ph, water_level as "waterLevel",
+                  n1_pct, n2_pct, ph_up_pct, ph_dn_pct, t5_pct
+                FROM outdoorreading
+                WHERE user_id = u.id
+                ORDER BY user_id, timestamp DESC
+                LIMIT 1
+              ) l;
             `.catch((err) => {
               console.error('Error in batch outdoorReadings query:', err);
               return [];
@@ -191,22 +240,22 @@ export async function getCustomers(params: GetCustomersParams): Promise<{
           : Promise.resolve([]),
       ]);
 
-      // In-memory indexing of sub-relations
-      const farmsByUser = new Map<number, any[]>();
-      farms.forEach((f) => {
-        const list = farmsByUser.get(f.userId) || [];
-        list.push(f);
-        farmsByUser.set(f.userId, list);
-      });
+      // Step 3: Compute day stats ONLY for active farms and single-farm active users
+      const farmStatsTargetIds: string[] = [];
+      const farmStartTimes: Date[] = [];
+      const farmEndTimes: Date[] = [];
 
-      const fertSettingsByUser = new Map<number, any>();
-      fertSettingsList.forEach((s) => {
-        fertSettingsByUser.set(s.userId, s);
-      });
+      for (const r of farmLatestReadings) {
+        if (r.farmId && r.timestamp) {
+          farmStatsTargetIds.push(r.farmId);
+          const { istStart, istEnd } = getISTDayUtcRange(new Date(r.timestamp));
+          farmStartTimes.push(istStart);
+          farmEndTimes.push(istEnd);
+        }
+      }
 
+      // Index user-level latest readings
       const envReadingMap = new Map<number, any>();
-      const outdoorReadingMap = new Map<number, any>();
-
       envReadings.forEach((r) => {
         if (r.userId) {
           envReadingMap.set(Number(r.userId), {
@@ -215,6 +264,120 @@ export async function getCustomers(params: GetCustomersParams): Promise<{
           });
         }
       });
+
+      // Target single-farm users with user-level fallback if farm has no direct readings
+      const userStatsTargetIds: number[] = [];
+      const userStartTimes: Date[] = [];
+      const userEndTimes: Date[] = [];
+
+      for (const user of users) {
+        const userFarms = user.farm || [];
+        if (userFarms.length === 1) {
+          const f = userFarms[0];
+          const hasFarmReading = farmStatsTargetIds.includes(f.id);
+          if (!hasFarmReading) {
+            const uReading = envReadingMap.get(user.id);
+            if (uReading?.timestamp) {
+              userStatsTargetIds.push(user.id);
+              const { istStart, istEnd } = getISTDayUtcRange(uReading.timestamp);
+              userStartTimes.push(istStart);
+              userEndTimes.push(istEnd);
+            }
+          }
+        }
+      }
+
+      const [farmDayStats = [], userDayStats = []] = await Promise.all([
+        farmStatsTargetIds.length > 0
+          ? prisma.$queryRaw<any[]>`
+              SELECT 
+                e."farmId",
+                MIN(e.timestamp) as "dayStartTime",
+                MAX(e.timestamp) as "latestTime",
+                COUNT(e.id)::int as "readingCount"
+              FROM (
+                SELECT 
+                  unnest(${farmStatsTargetIds}::text[]) as "farmId",
+                  unnest(${farmStartTimes}::timestamp[]) as "startTime",
+                  unnest(${farmEndTimes}::timestamp[]) as "endTime"
+              ) ranges
+              JOIN "EnvironmentalReading" e 
+                ON e."farmId" = ranges."farmId"
+               AND e.timestamp >= ranges."startTime"
+               AND e.timestamp < ranges."endTime"
+              GROUP BY e."farmId";
+            `.catch((err) => {
+              console.error('Error in batch farmDayStats query:', err);
+              return [];
+            })
+          : Promise.resolve([]),
+        userStatsTargetIds.length > 0
+          ? prisma.$queryRaw<any[]>`
+              SELECT 
+                e."userId",
+                MIN(e.timestamp) as "dayStartTime",
+                MAX(e.timestamp) as "latestTime",
+                COUNT(e.id)::int as "readingCount"
+              FROM (
+                SELECT 
+                  unnest(${userStatsTargetIds}::int[]) as "userId",
+                  unnest(${userStartTimes}::timestamp[]) as "startTime",
+                  unnest(${userEndTimes}::timestamp[]) as "endTime"
+              ) ranges
+              JOIN "EnvironmentalReading" e 
+                ON e."userId" = ranges."userId"
+               AND e.timestamp >= ranges."startTime"
+               AND e.timestamp < ranges."endTime"
+              GROUP BY e."userId";
+            `.catch((err) => {
+              console.error('Error in batch userDayStats query:', err);
+              return [];
+            })
+          : Promise.resolve([]),
+      ]);
+
+      const farmLatestReadingMap = new Map<string, any>();
+      farmLatestReadings.forEach((r) => {
+        if (r.farmId) {
+          farmLatestReadingMap.set(r.farmId, {
+            ...r,
+            timestamp: r.timestamp ? new Date(r.timestamp) : null,
+          });
+        }
+      });
+
+      const farmDayStatsMap = new Map<string, { dayStartTime: Date | null; readingCount: number }>();
+      farmDayStats.forEach((s) => {
+        if (s.farmId) {
+          farmDayStatsMap.set(s.farmId, {
+            dayStartTime: s.dayStartTime ? new Date(s.dayStartTime) : null,
+            readingCount: Number(s.readingCount) || 0,
+          });
+        }
+      });
+
+      const userDayStatsMap = new Map<number, { dayStartTime: Date | null; readingCount: number }>();
+      (userDayStats || []).forEach((s: any) => {
+        if (s.userId) {
+          userDayStatsMap.set(Number(s.userId), {
+            dayStartTime: s.dayStartTime ? new Date(s.dayStartTime) : null,
+            readingCount: Number(s.readingCount) || 0,
+          });
+        }
+      });
+
+      // In-memory indexing of sub-relations
+      const farmsByUser = new Map<number, any[]>();
+      users.forEach((u) => {
+        farmsByUser.set(u.id, u.farm || []);
+      });
+
+      const fertSettingsByUser = new Map<number, any>();
+      fertSettingsList.forEach((s) => {
+        fertSettingsByUser.set(s.userId, s);
+      });
+
+      const outdoorReadingMap = new Map<number, any>();
 
       outdoorReadings.forEach((r) => {
         if (r.userId) {
@@ -322,21 +485,96 @@ export async function getCustomers(params: GetCustomersParams): Promise<{
           };
         }
 
-        // Individual farm summaries
-        const farms: FarmSummary[] = userFarms.map((f) => ({
-          farmId: f.id,
-          name: f.name,
-          crop: f.plant?.plantName || f.boundaries.find((b: any) => b.cropType)?.cropType || null,
-          cropType: f.plant?.plantName || null,
-          totalArea: f.totalArea || 0,
-          totalAreaAcres: f.totalAreaAcres || 0,
-          location: f.location as any,
-          boundaryCount: f.boundaries.length,
-          deviceCount: f.devices.length,
-          latestReadingTime: latestTimestamp ? latestTimestamp.toISOString() : null,
-          formattedReadingTime: formatIST(latestTimestamp),
-          readingStatus,
-        }));
+        const isSingleFarmUser = userFarms.length === 1;
+
+        // Individual farm summaries with specific readings, boundary name, and day stats
+        const farms: FarmSummary[] = userFarms.map((f) => {
+          // Multi-farm isolation: only single-farm accounts may fall back to user-level telemetry.
+          // Multi-farm accounts strictly show readings specifically matching the farmId.
+          const farmReading = farmLatestReadingMap.get(f.id) || (isSingleFarmUser ? envReadingMap.get(user.id) : null);
+          const farmStats = farmDayStatsMap.get(f.id) || (isSingleFarmUser ? userDayStatsMap.get(user.id) : null);
+
+          const boundaryNames = f.boundaries
+            .map((b: any) => b.name)
+            .filter(Boolean)
+            .join(', ');
+
+          const farmTimestamp = farmReading?.timestamp ? new Date(farmReading.timestamp) : null;
+          const farmStatus = farmReading ? calculateReadingStatus(farmTimestamp) : 'NO_DATA';
+          const farmBattery = farmReading ? calculateBatterySummary(farmReading) : null;
+
+          const dayStartTime = farmStats?.dayStartTime || farmTimestamp;
+          const readingCountToday = farmReading ? (farmStats?.readingCount ?? 1) : 0;
+
+          const cropName =
+            f.plant?.plantName ||
+            f.boundaries.find((b: any) => b.cropType)?.cropType ||
+            null;
+
+          const farmReadingRaw = farmReading
+            ? {
+                telemetry_id: farmReading.id,
+                timestamp_iso: farmTimestamp ? farmTimestamp.toISOString() : null,
+                timestamp_ist: formatIST(farmTimestamp),
+                farm_id: f.id,
+                farm_name: f.name,
+                boundary_name: boundaryNames || 'Main Plot',
+                crop: cropName || 'General',
+                reading_count_today: readingCountToday,
+                day_start_time_ist: formatIST(dayStartTime),
+                climate: {
+                  temperature_c: farmReading.temperature,
+                  humidity_pct: farmReading.humidity,
+                  vpd_kpa: farmReading.vpd,
+                  co2_ppm: farmReading.co2,
+                  wind_speed_ms: farmReading.windSpeed,
+                  direct_radiation_wm2: farmReading.directRadiation,
+                  par_umol_m2_s: farmReading.par,
+                  evapotranspiration_mm_day: farmReading.evapotranspiration,
+                  gdd: farmReading.gdd,
+                },
+                soil_root_zone: {
+                  soil_temperature_c: farmReading.soilTemperature,
+                  soil_moisture_pct: farmReading.soilMoisture,
+                  soil_ec_mscm: farmReading.soilElectroConductivity,
+                  nitrogen_n_mgkg: farmReading.soilNitrogen,
+                  phosphorus_p_mgkg: farmReading.soilPhosphorus,
+                  potassium_k_mgkg: farmReading.soilPotassium,
+                  ph_master: farmReading.phMaster,
+                  ph_slave: farmReading.phSlave,
+                },
+                power_system: {
+                  battery_percentage: farmReading.batteryPercentage,
+                  battery_voltage_v: farmReading.batteryVoltage,
+                  battery_current_ma: farmReading.batteryCurrent,
+                  battery_charging_status: farmReading.batteryChargingStatus,
+                  is_charging: farmReading.isCharging,
+                },
+                reading_status: farmStatus,
+              }
+            : null;
+
+          return {
+            farmId: f.id,
+            name: f.name,
+            boundaryName: boundaryNames || (f.boundaries.length > 0 ? `${f.boundaries.length} Plots` : 'Main Plot'),
+            crop: cropName,
+            cropType: f.plant?.plantName || null,
+            totalArea: f.totalArea || 0,
+            totalAreaAcres: f.totalAreaAcres || 0,
+            location: f.location as any,
+            boundaryCount: f.boundaries.length,
+            deviceCount: f.devices.length,
+            latestReadingTime: farmTimestamp ? farmTimestamp.toISOString() : null,
+            formattedReadingTime: farmTimestamp ? formatIST(farmTimestamp) : 'No readings',
+            dayStartTime: farmReading && dayStartTime ? dayStartTime.toISOString() : null,
+            formattedDayStartTime: farmReading && dayStartTime ? formatIST(dayStartTime) : '—',
+            readingCountToday,
+            readingStatus: farmStatus,
+            battery: farmBattery,
+            latestReadingRaw: farmReadingRaw,
+          };
+        });
 
         // Complete latest reading JSON payload for the eye popup
         const latestReadingRaw = envReading
@@ -643,12 +881,14 @@ export async function getCustomerById(userId: number, forceFresh = false) {
       }
 
       // Compute per-farm telemetry synchronously in memory from the cached reading pools
+      const isSingleFarm = farms.length === 1;
       const farmReadings = farms.map((f: any) => {
         const farmEnvList = envReadings.filter((r) => r.farmId === f.id);
         const farmOutdoorList = outdoorReadings.filter((r) => r.farmId === f.id);
 
-        const farmEnv = mergeLatestReading(farmEnvList) || latestEnv;
-        const farmOutdoor = farmOutdoorList[0] || latestOutdoor;
+        // Multi-farm isolation: only single-farm user may fall back to overall customer reading
+        const farmEnv = mergeLatestReading(farmEnvList) || (isSingleFarm ? latestEnv : null);
+        const farmOutdoor = farmOutdoorList[0] || (isSingleFarm ? latestOutdoor : null);
 
         const activeEnv = farmEnv;
         const activeOutdoor = farmOutdoor;

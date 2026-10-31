@@ -304,3 +304,5 @@ export const {
   useLazyGetFarmDetailQuery,
   useLazyGetValveApplianceStatusQuery,
 } = fleetApi;
+
+export const usePrefetch = fleetApi.usePrefetch;

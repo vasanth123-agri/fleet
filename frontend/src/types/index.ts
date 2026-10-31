@@ -116,6 +116,7 @@ export interface CustomerDashboardSummary {
 export interface FarmSummary {
   farmId: string;
   name: string;
+  boundaryName?: string | null;
   crop: string | null;
   cropType: string | null;
   totalArea: number;
@@ -125,6 +126,9 @@ export interface FarmSummary {
   deviceCount: number;
   latestReadingTime: string | null;
   formattedReadingTime: string | null;
+  dayStartTime?: string | null;
+  formattedDayStartTime?: string | null;
+  readingCountToday?: number;
   readingStatus: ReadingStatus;
   battery?: BatterySummary | null;
   latestTelemetry?: any;

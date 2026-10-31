@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Sprout,
@@ -29,16 +30,23 @@ import { TelemetryJsonModal } from '../components/TelemetryJsonModal';
 import { getCropEmoji } from '../utils/cropEmoji';
 
 interface FarmMonitoringPageProps {
-  farmId: string;
-  onBack: () => void;
-  onSelectCustomer: (userId: number) => void;
+  farmId?: string;
+  onBack?: () => void;
+  onSelectCustomer?: (userId: number) => void;
 }
 
 export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
-  farmId,
+  farmId: propFarmId,
   onBack,
   onSelectCustomer,
 }) => {
+  const { farmId: paramFarmId } = useParams<{ farmId?: string }>();
+  const navigate = useNavigate();
+
+  const farmId = propFarmId || paramFarmId || '';
+  const handleBack = onBack ?? (() => navigate(-1));
+  const handleSelectCustomer = onSelectCustomer ?? ((userId: number) => navigate(`/customers/${userId}`));
+
   const [range, setRange] = useState<string>('24h');
   const [modalPayload, setModalPayload] = useState<any | null>(null);
 
@@ -49,7 +57,7 @@ export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
     isFetching,
     error,
     refetch,
-  } = useGetFarmDetailQuery({ farmId, range });
+  } = useGetFarmDetailQuery({ farmId, range }, { skip: !farmId });
 
   if (isLoading) {
     return (
@@ -68,7 +76,7 @@ export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
         </div>
         <p className="text-slate-700 font-medium">Farm telemetry profile not found or failed to load.</p>
         <button
-          onClick={onBack}
+          onClick={handleBack}
           className="px-4 py-2 bg-[#00665E] text-white rounded-xl hover:bg-[#004D47] text-xs font-semibold"
         >
           Return to Customer
@@ -151,7 +159,7 @@ export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center space-x-2">
           <button
-            onClick={onBack}
+            onClick={handleBack}
             className="flex items-center space-x-2 text-xs font-semibold text-slate-600 hover:text-[#00665E] bg-white border border-slate-200 px-3.5 py-2 rounded-xl transition-all shadow-xs hover:bg-slate-50"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -159,7 +167,7 @@ export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
           </button>
 
           <button
-            onClick={() => onSelectCustomer(farm.userId)}
+            onClick={() => handleSelectCustomer(farm.userId)}
             className="text-xs font-semibold text-slate-700 hover:text-[#00665E] bg-white border border-slate-200 px-3 py-2 rounded-xl transition-all shadow-xs flex items-center space-x-1.5"
           >
             <span className="text-slate-500">Customer:</span>
@@ -418,7 +426,6 @@ export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
                 Battery & Power Monitoring ({range.toUpperCase()})
               </h3>
             </div>
-           
           </div>
 
           {/* Real-time Vertical Battery Gauge Card */}
@@ -481,4 +488,3 @@ export const FarmMonitoringPage: React.FC<FarmMonitoringPageProps> = ({
     </div>
   );
 };
-

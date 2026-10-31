@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Mail,
@@ -22,16 +23,23 @@ import { TelemetryJsonModal } from '../components/TelemetryJsonModal';
 import { getCropEmoji } from '../utils/cropEmoji';
 
 interface CustomerDetailPageProps {
-  userId: number;
-  onBack: () => void;
-  onSelectFarm: (farmId: string) => void;
+  userId?: number;
+  onBack?: () => void;
+  onSelectFarm?: (farmId: string) => void;
 }
 
 export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
-  userId,
+  userId: propUserId,
   onBack,
   onSelectFarm,
 }) => {
+  const { customerId } = useParams<{ customerId?: string }>();
+  const navigate = useNavigate();
+
+  const userId = propUserId ?? (customerId ? parseInt(customerId, 10) : 0);
+  const handleBack = onBack ?? (() => navigate('/customers'));
+  const handleSelectFarm = onSelectFarm ?? ((farmId: string) => navigate(`/farms/${farmId}`));
+
   const [modalPayloadCustomer, setModalPayloadCustomer] = useState<any | null>(null);
 
   const {
@@ -40,7 +48,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
     isFetching,
     error,
     refetch,
-  } = useGetCustomerDetailQuery(userId);
+  } = useGetCustomerDetailQuery(userId, { skip: !userId });
 
   if (isLoading) {
     return (
@@ -59,7 +67,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
         </div>
         <p className="text-slate-700 font-medium text-sm">Customer record not found or error loading telemetry.</p>
         <button
-          onClick={onBack}
+          onClick={handleBack}
           className="px-4 py-2.5 bg-[#00665E] text-white rounded-xl hover:bg-[#004D47] text-xs font-semibold shadow-xs"
         >
           Return to Customer List
@@ -76,7 +84,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
       {/* Back Button & Actions (Mobile Touch Friendly) */}
       <div className="flex items-center justify-between gap-2">
         <button
-          onClick={onBack}
+          onClick={handleBack}
           className="flex items-center space-x-2 text-xs font-semibold text-slate-600 hover:text-[#00665E] bg-white border border-slate-200 px-3 sm:px-3.5 py-2.5 rounded-xl transition-all shadow-xs hover:bg-slate-50 active:scale-95"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -108,7 +116,6 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-mono">
                   ID: #{customer.customerId}
                 </span>
-                
               </div>
 
               <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-xs text-slate-500 pt-0.5">
@@ -151,7 +158,6 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
               <Sprout className="w-5 h-5 text-[#00665E]" />
               <span>Customer Farms ({farms.length} {farms.length === 1 ? 'Farm' : 'Total Farms'})</span>
             </h2>
-           
           </div>
         </div>
 
@@ -169,7 +175,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
               return (
                 <div
                   key={farm.farmId || farm.id}
-                  onClick={() => onSelectFarm(farm.farmId || farm.id)}
+                  onClick={() => handleSelectFarm(farm.farmId || farm.id)}
                   className="glass-card glass-card-hover rounded-2xl p-4 sm:p-5 cursor-pointer space-y-3.5 group bg-white border border-slate-200 shadow-xs flex flex-col justify-between transition-all"
                 >
                   <div className="space-y-3">
@@ -198,14 +204,14 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
                           </button>
                         </div>
 
-                        {/* Crop Badge with Emoji (Requested by user) */}
+                        {/* Crop Badge with Emoji */}
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span className="inline-flex items-center space-x-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-[#00665E] border border-emerald-200/80 shadow-2xs">
                             <span className="text-sm">{cropEmoji}</span>
                             <span>{cropName}</span>
                           </span>
 
-                          {/* Battery Capacity in Icon Type (Requested by user) */}
+                          {/* Battery Capacity in Icon Type */}
                           {hasFarmBattery && (
                             <BatteryGauge battery={farm.battery} variant="icon" />
                           )}
@@ -215,19 +221,7 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
                       <StatusBadge status={farm.readingStatus || customer.readingStatus} size="sm" />
                     </div>
 
-                    {/* Data Origin & Transmitter Strip */}
-                    {/* <div className="bg-slate-50 border border-slate-200/80 px-3 py-2 rounded-xl text-xs flex items-center justify-between gap-2">
-                      <div className="flex items-center space-x-1.5 truncate">
-                        <Radio className="w-3.5 h-3.5 text-[#00665E] shrink-0 animate-pulse-subtle" />
-                        <span className="text-slate-500 font-normal">Data Origin:</span>
-                        <span className="font-semibold text-slate-800 truncate">{sourceOrigin}</span>
-                      </div>
-                      <span className="text-[11px] font-mono text-slate-400 shrink-0">
-                        {farm.formattedReadingTime || 'No timestamp'}
-                      </span>
-                    </div> */}
-
-                    {/* Farm Physical Properties (Compact Mobile Friendly) */}
+                    {/* Farm Physical Properties */}
                     <div className="grid grid-cols-3 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                       <div>
                         <span className="text-slate-500 text-[10px] uppercase font-semibold block">Total Area</span>
@@ -246,8 +240,6 @@ export const CustomerDetailPage: React.FC<CustomerDetailPageProps> = ({
                         <span className="font-bold text-teal-700">{farm.deviceCount || 0} nodes</span>
                       </div>
                     </div>
-
-                  
                   </div>
 
                   {/* Footer with Sync Time & Monitor Action */}
